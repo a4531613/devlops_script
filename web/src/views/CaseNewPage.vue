@@ -32,9 +32,9 @@ async function loadConfig() {
   form.values = {}
   templateConfigs.value.forEach((c) => {
     const t = c.fieldDef?.type
-    if (t === 'checkbox' || t === 'multiselect') form.values[c.fieldDefId] = []
-    else if (t === 'switch') form.values[c.fieldDefId] = false
-    else form.values[c.fieldDefId] = null
+    if (t === 'checkbox' || t === 'multiselect') form.values[c.fieldId] = []
+    else if (t === 'switch') form.values[c.fieldId] = false
+    else form.values[c.fieldId] = null
   })
 }
 
@@ -47,7 +47,7 @@ function validateRequired() {
   if (!form.title?.trim()) return { ok: false, msg: '请输入案例标题' }
   for (const cfg of orderedFields.value) {
     if (!cfg.required) continue
-    const v = form.values[cfg.fieldDefId]
+    const v = form.values[cfg.fieldId]
     const empty = v === null || v === undefined || v === '' || (Array.isArray(v) && v.length === 0)
     if (empty) return { ok: false, msg: `请填写：${fieldLabel(cfg)}` }
   }
@@ -92,10 +92,10 @@ onMounted(async () => {
         <el-input v-model="form.title" placeholder="请输入案例标题" />
       </el-form-item>
 
-      <template v-for="cfg in orderedFields" :key="cfg.fieldDefId">
+      <template v-for="cfg in orderedFields" :key="cfg.fieldId">
         <el-form-item :label="fieldLabel(cfg)" :required="!!cfg.required">
           <DynamicFieldInput
-            v-model="form.values[cfg.fieldDefId]"
+            v-model="form.values[cfg.fieldId]"
             :field-def="cfg.fieldDef"
             :config="cfg.config"
           />

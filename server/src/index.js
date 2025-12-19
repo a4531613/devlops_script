@@ -88,17 +88,34 @@ app.delete("/api/roles/:id", (req, res) => {
 });
 
 // Field definitions
-app.get("/api/field-defs", (req, res) => {
+// Template fields (fields are defined per template)
+app.get("/api/templates/:id/fields", (req, res) => {
+  const { id: templateId } = req.params;
   const rows = db
     .prepare(
-      "SELECT id, name, label, type, options_json, created_at, updated_at FROM field_defs ORDER BY updated_at DESC"
+      `
+      SELECT id, template_id, name, label, type, options_json, created_at, updated_at
+      FROM template_fields
+      WHERE template_id = ?
+      ORDER BY updated_at DESC
+      `
     )
-    .all()
-    .map((r) => ({ ...r, options: parseJsonOrNull(r.options_json) }));
+    .all(templateId)
+    .map((r) => ({
+      id: r.id,
+      templateId: r.template_id,
+      name: r.name,
+      label: r.label,
+      type: r.type,
+      options: parseJsonOrNull(r.options_json),
+      created_at: r.created_at,
+      updated_at: r.updated_at,
+    }));
   res.json(rows);
 });
 
-app.post("/api/field-defs", (req, res) => {
+app.post("/api/templates/:id/fields", (req, res) => {
+  const { id: templateId } = req.params;
   const { name, label, type, options } = req.body ?? {};
   if (!name || typeof name !== "string") return res.status(400).json({ error: "name required" });
   if (!label || typeof label !== "string") return res.status(400).json({ error: "label required" });
@@ -107,16 +124,28 @@ app.post("/api/field-defs", (req, res) => {
   const ts = nowIso();
   try {
     db.prepare(
-      "INSERT INTO field_defs (id, name, label, type, options_json, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)"
-    ).run(id, name.trim(), label.trim(), type.trim(), jsonStringifyOrNull(options), ts, ts);
+      `
+      INSERT INTO template_fields (id, template_id, name, label, type, options_json, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      `
+    ).run(
+      id,
+      templateId,
+      name.trim(),
+      label.trim(),
+      type.trim(),
+      jsonStringifyOrNull(options),
+      ts,
+      ts
+    );
     res.json({ id });
   } catch (e) {
     res.status(400).json({ error: e.message });
   }
 });
 
-app.put("/api/field-defs/:id", (req, res) => {
-  const { id } = req.params;
+app.put("/api/templates/:id/fields/:fieldId", (req, res) => {
+  const { id: templateId, fieldId } = req.params;
   const { name, label, type, options } = req.body ?? {};
   if (!name || typeof name !== "string") return res.status(400).json({ error: "name required" });
   if (!label || typeof label !== "string") return res.status(400).json({ error: "label required" });
@@ -125,9 +154,13 @@ app.put("/api/field-defs/:id", (req, res) => {
   try {
     const info = db
       .prepare(
-        "UPDATE field_defs SET name = ?, label = ?, type = ?, options_json = ?, updated_at = ? WHERE id = ?"
+        `
+        UPDATE template_fields
+        SET name = ?, label = ?, type = ?, options_json = ?, updated_at = ?
+        WHERE id = ? AND template_id = ?
+        `
       )
-      .run(name.trim(), label.trim(), type.trim(), jsonStringifyOrNull(options), ts, id);
+      .run(name.trim(), label.trim(), type.trim(), jsonStringifyOrNull(options), ts, fieldId, templateId);
     if (info.changes === 0) return res.status(404).json({ error: "not found" });
     res.json({ ok: true });
   } catch (e) {
@@ -135,15 +168,13 @@ app.put("/api/field-defs/:id", (req, res) => {
   }
 });
 
-app.delete("/api/field-defs/:id", (req, res) => {
-  const { id } = req.params;
-  try {
-    const info = db.prepare("DELETE FROM field_defs WHERE id = ?").run(id);
-    if (info.changes === 0) return res.status(404).json({ error: "not found" });
-    res.json({ ok: true });
-  } catch (e) {
-    res.status(400).json({ error: e.message });
-  }
+app.delete("/api/templates/:id/fields/:fieldId", (req, res) => {
+  const { id: templateId, fieldId } = req.params;
+  const info = db
+    .prepare("DELETE FROM template_fields WHERE id = ? AND template_id = ?")
+    .run(fieldId, templateId);
+  if (info.changes === 0) return res.status(404).json({ error: "not found" });
+  res.json({ ok: true });
 });
 
 // Templates
@@ -203,7 +234,7 @@ app.get("/api/templates/:id/config", (req, res) => {
       SELECT
         c.id,
         c.template_id,
-        c.field_def_id,
+        c.template_field_id,
         c.sort_order,
         c.required,
         c.config_json,
@@ -212,7 +243,7 @@ app.get("/api/templates/:id/config", (req, res) => {
         f.type AS field_type,
         f.options_json AS field_options_json
       FROM template_field_configs c
-      JOIN field_defs f ON f.id = c.field_def_id
+      JOIN template_fields f ON f.id = c.template_field_id
       WHERE c.template_id = ?
       ORDER BY c.sort_order ASC
       `
@@ -221,12 +252,12 @@ app.get("/api/templates/:id/config", (req, res) => {
     .map((r) => ({
       id: r.id,
       templateId: r.template_id,
-      fieldDefId: r.field_def_id,
+      fieldId: r.template_field_id,
       sortOrder: r.sort_order,
       required: !!r.required,
       config: parseJsonOrNull(r.config_json) ?? {},
       fieldDef: {
-        id: r.field_def_id,
+        id: r.template_field_id,
         name: r.field_name,
         label: r.field_label,
         type: r.field_type,
@@ -244,14 +275,14 @@ app.put("/api/templates/:id/config", (req, res) => {
   const tx = db.transaction(() => {
     db.prepare("DELETE FROM template_field_configs WHERE template_id = ?").run(templateId);
     const insert = db.prepare(
-      "INSERT INTO template_field_configs (id, template_id, field_def_id, sort_order, required, config_json) VALUES (?, ?, ?, ?, ?, ?)"
+      "INSERT INTO template_field_configs (id, template_id, template_field_id, sort_order, required, config_json) VALUES (?, ?, ?, ?, ?, ?)"
     );
     items.forEach((item, index) => {
-      if (!item?.fieldDefId) return;
+      if (!item?.fieldId) return;
       insert.run(
         newId(),
         templateId,
-        item.fieldDefId,
+        item.fieldId,
         typeof item.sortOrder === "number" ? item.sortOrder : index,
         item.required ? 1 : 0,
         jsonStringifyOrNull(item.config ?? {})
@@ -328,10 +359,10 @@ app.post("/api/cases", (req, res) => {
     );
 
     const insertValue = db.prepare(
-      "INSERT INTO case_values (id, case_id, field_def_id, value_json) VALUES (?, ?, ?, ?)"
+      "INSERT INTO case_values (id, case_id, template_field_id, value_json) VALUES (?, ?, ?, ?)"
     );
-    Object.entries(inputValues).forEach(([fieldDefId, value]) => {
-      insertValue.run(newId(), caseId, fieldDefId, jsonStringifyOrNull(value));
+    Object.entries(inputValues).forEach(([fieldId, value]) => {
+      insertValue.run(newId(), caseId, fieldId, jsonStringifyOrNull(value));
     });
   });
 
@@ -358,10 +389,10 @@ app.get("/api/cases/:id", (req, res) => {
   if (!c) return res.status(404).json({ error: "not found" });
 
   const values = db
-    .prepare("SELECT field_def_id, value_json FROM case_values WHERE case_id = ?")
+    .prepare("SELECT template_field_id, value_json FROM case_values WHERE case_id = ?")
     .all(id)
     .reduce((acc, r) => {
-      acc[r.field_def_id] = parseJsonOrNull(r.value_json);
+      acc[r.template_field_id] = parseJsonOrNull(r.value_json);
       return acc;
     }, {});
 

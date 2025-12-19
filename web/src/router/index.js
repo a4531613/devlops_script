@@ -13,7 +13,7 @@ const router = createRouter({
   routes: [
     { path: '/', name: 'dashboard', component: DashboardPage, meta: { title: '概览' } },
     { path: '/roles', name: 'roles', component: RolesPage, meta: { title: '角色管理' } },
-    { path: '/field-defs', name: 'fieldDefs', component: FieldDefsPage, meta: { title: '字段库' } },
+    { path: '/field-defs', name: 'fieldDefs', component: FieldDefsPage, meta: { title: '模板字段' } },
     { path: '/templates', name: 'templates', component: TemplatesPage, meta: { title: '案例模板' } },
     {
       path: '/templates/:id/config',
@@ -27,4 +27,3 @@ const router = createRouter({
 })
 
 export default router
-

@@ -34,7 +34,7 @@ function nav(path) {
         </el-menu-item>
         <el-menu-item index="/field-defs">
           <el-icon><Files /></el-icon>
-          <span>字段库</span>
+          <span>模板字段</span>
         </el-menu-item>
         <el-menu-item index="/templates">
           <el-icon><Document /></el-icon>
@@ -63,4 +63,3 @@ function nav(path) {
     </el-container>
   </el-container>
 </template>
-

@@ -120,7 +120,7 @@ onMounted(async () => {
           </el-table-column>
           <el-table-column label="值" min-width="240">
             <template #default="{ row }">
-              {{ displayValue(detail.values?.[row.fieldDefId]) }}
+              {{ displayValue(detail.values?.[row.fieldId]) }}
             </template>
           </el-table-column>
         </el-table>
@@ -131,4 +131,3 @@ onMounted(async () => {
     </div>
   </el-drawer>
 </template>
-

@@ -14,18 +14,26 @@ const templateId = computed(() => route.params.id)
 
 const loading = ref(false)
 const templates = ref([])
-const fieldDefs = ref([])
+const fields = ref([])
 const selected = ref([])
 const q = ref('')
+const columns = ref(2)
 
 const template = computed(() => templates.value.find((t) => t.id === templateId.value))
 
 const available = computed(() => {
-  const chosen = new Set(selected.value.map((s) => s.fieldDefId))
-  const base = fieldDefs.value.filter((f) => !chosen.has(f.id))
+  const chosen = new Set(selected.value.map((s) => s.fieldId))
+  const base = fields.value.filter((f) => !chosen.has(f.id))
   if (!q.value.trim()) return base
   const s = q.value.trim().toLowerCase()
   return base.filter((f) => f.name.toLowerCase().includes(s) || f.label.toLowerCase().includes(s))
+})
+
+const itemStyle = computed(() => {
+  const c = Number(columns.value) || 2
+  if (c <= 1) return { width: '100%' }
+  const gap = 10
+  return { width: `calc(${100 / c}% - ${(gap * (c - 1)) / c}px)` }
 })
 
 async function load() {
@@ -33,13 +41,13 @@ async function load() {
   try {
     const [tplRes, fieldRes, configRes] = await Promise.all([
       api.get('/templates'),
-      api.get('/field-defs'),
+      api.get(`/templates/${templateId.value}/fields`),
       api.get(`/templates/${templateId.value}/config`),
     ])
     templates.value = tplRes.data
-    fieldDefs.value = fieldRes.data
+    fields.value = fieldRes.data
     selected.value = (configRes.data ?? []).map((c) => ({
-      fieldDefId: c.fieldDefId,
+      fieldId: c.fieldId,
       required: !!c.required,
       config: {
         label: c.config?.label ?? '',
@@ -55,7 +63,7 @@ async function load() {
 
 function addField(fieldDef) {
   selected.value.push({
-    fieldDefId: fieldDef.id,
+    fieldId: fieldDef.id,
     required: false,
     config: { label: '', placeholder: '', options: null },
     fieldDef,
@@ -68,7 +76,7 @@ function removeField(index) {
 
 async function save() {
   const payload = selected.value.map((s, index) => ({
-    fieldDefId: s.fieldDefId,
+    fieldId: s.fieldId,
     sortOrder: index,
     required: !!s.required,
     config: {
@@ -95,7 +103,15 @@ onMounted(load)
         <el-button @click="back">返回</el-button>
         <div style="font-weight: 700">{{ template?.name || '模板' }} - 配置</div>
       </div>
-      <el-button type="primary" :disabled="!selected.length" @click="save">保存配置</el-button>
+      <div style="display: flex; align-items: center; gap: 10px">
+        <div style="color: #6b7280">列数</div>
+        <el-select v-model="columns" style="width: 120px">
+          <el-option :value="1" label="1 列" />
+          <el-option :value="2" label="2 列" />
+          <el-option :value="3" label="3 列" />
+        </el-select>
+        <el-button type="primary" :disabled="!selected.length" @click="save">保存配置</el-button>
+      </div>
     </div>
 
     <el-row :gutter="12">
@@ -120,9 +136,14 @@ onMounted(load)
 
       <el-col :span="14">
         <el-card>
-          <div style="font-weight: 600; margin-bottom: 10px">已选字段（拖拽排序）</div>
+          <div style="font-weight: 600; margin-bottom: 10px">已选字段（支持左右/上下拖拽排序）</div>
 
-          <Draggable v-model="selected" item-key="fieldDefId" handle=".drag-handle">
+          <Draggable
+            v-model="selected"
+            item-key="fieldId"
+            handle=".drag-handle"
+            :component-data="{ style: 'display:flex; flex-wrap:wrap; gap:10px;' }"
+          >
             <template #item="{ element, index }">
               <div
                 style="
@@ -132,6 +153,7 @@ onMounted(load)
                   margin-bottom: 10px;
                   background: #fff;
                 "
+                :style="itemStyle"
               >
                 <div style="display: flex; justify-content: space-between; align-items: center; gap: 10px">
                   <div style="display: flex; align-items: center; gap: 8px">
@@ -171,4 +193,3 @@ onMounted(load)
     </el-row>
   </div>
 </template>
-
