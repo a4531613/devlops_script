@@ -48,7 +48,7 @@ async function loadConfig() {
       form.values[c.id] = c.defaultValue
       return
     }
-    if (t === 'checkbox' || t === 'select_multi') form.values[c.id] = []
+    if (t === 'checkbox' || t === 'select_multi' || t === 'table') form.values[c.id] = []
     else if (t === 'switch') form.values[c.id] = false
     else form.values[c.id] = null
   })

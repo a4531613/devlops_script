@@ -21,6 +21,7 @@ export function mergeConfigWithFieldDefs(config, fieldDefs) {
       min: fieldDef.min ?? null,
       max: fieldDef.max ?? null,
       defaultValue: fieldDef.defaultValue ?? null,
+      helpText: fieldDef.helpText ?? null,
       config: {
         label: item.label || null,
         placeholder: item.placeholder || fieldDef.placeholder || null,

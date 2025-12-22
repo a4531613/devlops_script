@@ -1,6 +1,8 @@
 <script setup>
 import { computed, reactive, ref, watch } from 'vue'
-import { displayValue, normalizeOptions } from '../lib/fieldTypes'
+import { displayValue, normalizeOptions, parseOptionsJson } from '../lib/fieldTypes'
+import RichTextField from './RichTextField.vue'
+import DynamicTableField from './DynamicTableField.vue'
 
 const props = defineProps({
   fields: { type: Array, default: () => [] },
@@ -88,6 +90,24 @@ const FIELD_RENDERERS = {
     options: 'none',
     triggers: [],
   },
+  collapse: {
+    component: 'el-collapse',
+    valueType: 'none',
+    options: 'none',
+    triggers: [],
+  },
+  richtext: {
+    component: 'RichTextField',
+    valueType: 'string',
+    options: 'none',
+    triggers: ['change'],
+  },
+  table: {
+    component: 'DynamicTableField',
+    valueType: 'array',
+    options: 'object',
+    triggers: ['change'],
+  },
 }
 
 const TYPE_TO_RENDERER = {
@@ -105,6 +125,9 @@ const TYPE_TO_RENDERER = {
   switch: FIELD_RENDERERS.switch,
   divider: FIELD_RENDERERS.divider,
   section: FIELD_RENDERERS.divider,
+  collapse: FIELD_RENDERERS.collapse,
+  richtext: FIELD_RENDERERS.richtext,
+  table: FIELD_RENDERERS.table,
 }
 
 function getRenderer(field) {
@@ -135,7 +158,7 @@ const rules = computed(() => {
     if (f.required) {
       fieldRules.push({ required: true, message: `请输入${label}`, trigger: renderer.triggers })
     }
-    if (f.min != null || f.max != null || f.regex) {
+    if (f.min != null || f.max != null || f.regex || f.type === 'richtext' || f.type === 'table') {
       fieldRules.push({
         trigger: renderer.triggers,
         validator: (_rule, value, callback) => {
@@ -151,6 +174,21 @@ const rules = computed(() => {
             if (f.max != null && val.length > f.max) {
               return callback(new Error(`${label}最多选择${f.max}项`))
             }
+            if (f.type === 'table') {
+              const opt = parseOptionsJson(f.options) || {}
+              const minRows = opt.minRows ?? 0
+              const maxRows = opt.maxRows ?? 200
+              if (val.length < minRows) return callback(new Error(`${label}至少${minRows}行`))
+              if (val.length > maxRows) return callback(new Error(`${label}最多${maxRows}行`))
+              const cols = Array.isArray(opt.columns) ? opt.columns : []
+              for (const row of val) {
+                for (const col of cols) {
+                  if (col.required && (row?.[col.code] == null || row?.[col.code] === '')) {
+                    return callback(new Error(`${label}中列【${col.name}】必填`))
+                  }
+                }
+              }
+            }
           } else {
             const len = String(val).length
             if (f.min != null && len < f.min) return callback(new Error(`${label}长度至少${f.min}`))
@@ -158,6 +196,10 @@ const rules = computed(() => {
             if (f.regex) {
               const re = f.regex instanceof RegExp ? f.regex : new RegExp(f.regex)
               if (!re.test(String(val))) return callback(new Error(`${label}格式不正确`))
+            }
+            if (f.type === 'richtext') {
+              const text = String(val).replace(/<[^>]+>/g, '').trim()
+              if (!text) return callback(new Error(`${label}不能为空`))
             }
           }
           return callback()
@@ -217,12 +259,51 @@ defineExpose({ validate, submit })
       <template v-else-if="getRenderer(field).component === 'el-divider'">
         <el-divider>{{ labelOf(field) }}</el-divider>
       </template>
+      <template v-else-if="getRenderer(field).component === 'el-collapse'">
+        <el-collapse :accordion="parseOptionsJson(field.options)?.accordion" :model-value="parseOptionsJson(field.options)?.defaultOpen ? ['panel'] : []">
+          <el-collapse-item :title="labelOf(field)" name="panel">
+            <div class="muted">{{ field.helpText || '' }}</div>
+          </el-collapse-item>
+        </el-collapse>
+      </template>
       <el-form-item v-else :label="labelOf(field)" :prop="field.id" :required="!!field.required">
         <template v-if="readonlyMode || field.config?.readonly">
-          <span>{{ displayValue(formModel[field.id]) }}</span>
+          <RichTextField
+            v-if="getRenderer(field).component === 'RichTextField'"
+            :model-value="formModel[field.id]"
+            :readonly="true"
+          />
+          <DynamicTableField
+            v-else-if="getRenderer(field).component === 'DynamicTableField'"
+            :model-value="formModel[field.id]"
+            :columns="parseOptionsJson(field.options)?.columns || []"
+            :min-rows="parseOptionsJson(field.options)?.minRows ?? 0"
+            :max-rows="parseOptionsJson(field.options)?.maxRows ?? 200"
+            :readonly="true"
+          />
+          <span v-else>{{ displayValue(formModel[field.id]) }}</span>
         </template>
         <template v-else>
           <component
+            v-if="getRenderer(field).component === 'RichTextField'"
+            :is="RichTextField"
+            :model-value="formModel[field.id]"
+            :placeholder="placeholderOf(field)"
+            :readonly="readonlyMode || field.config?.readonly"
+            @update:model-value="(v) => update(field.id, v)"
+          />
+          <component
+            v-else-if="getRenderer(field).component === 'DynamicTableField'"
+            :is="DynamicTableField"
+            :model-value="formModel[field.id]"
+            :columns="parseOptionsJson(field.options)?.columns || []"
+            :min-rows="parseOptionsJson(field.options)?.minRows ?? 0"
+            :max-rows="parseOptionsJson(field.options)?.maxRows ?? 200"
+            :readonly="readonlyMode || field.config?.readonly"
+            @update:model-value="(v) => update(field.id, v)"
+          />
+          <component
+            v-else
             :is="getRenderer(field).component"
             v-bind="getRenderer(field).props || {}"
             :model-value="formModel[field.id]"

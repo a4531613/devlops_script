@@ -118,6 +118,14 @@ function mockValueFor(field) {
   if (type === 'date') return new Date().toISOString().slice(0, 10)
   if (type === 'datetime') return new Date().toISOString()
   if (type === 'switch') return true
+  if (type === 'table') {
+    if (!Array.isArray(field.options?.columns)) return []
+    const row = {}
+    field.options.columns.forEach((c) => {
+      row[c.code] = c.type === 'number' ? 1 : c.type === 'select' ? (c.options?.[0]?.value ?? null) : ''
+    })
+    return [row]
+  }
   if (type === 'divider' || type === 'section') return null
   return `${field.label || field.name || '字段'}示例`
 }

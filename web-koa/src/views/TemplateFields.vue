@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { api } from '../api/client'
 import OptionsEditor from '../components/OptionsEditor.vue'
+import TableColumnsEditor from '../components/TableColumnsEditor.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -26,6 +27,8 @@ const form = ref({
   placeholder: '',
   helpText: '',
   options: [],
+  tableConfig: { columns: [], minRows: 0, maxRows: 200 },
+  collapseConfig: { accordion: false, defaultOpen: true },
   regex: '',
   min: null,
   max: null,
@@ -44,6 +47,9 @@ const fieldTypes = [
   { value: 'datetime', label: '日期时间' },
   { value: 'switch', label: '开关' },
   { value: 'divider', label: '分隔线' },
+  { value: 'collapse', label: '折叠面板' },
+  { value: 'richtext', label: '富文本' },
+  { value: 'table', label: '表格' },
 ]
 
 const filtered = computed(() => {
@@ -84,6 +90,8 @@ function create() {
     placeholder: '',
     helpText: '',
     options: [],
+    tableConfig: { columns: [], minRows: 0, maxRows: 200 },
+    collapseConfig: { accordion: false, defaultOpen: true },
     regex: '',
     min: null,
     max: null,
@@ -103,6 +111,8 @@ function edit(row) {
     placeholder: row.placeholder ?? '',
     helpText: row.helpText ?? '',
     options: row.options ?? [],
+    tableConfig: row.options?.columns ? row.options : { columns: [], minRows: 0, maxRows: 200 },
+    collapseConfig: row.options?.accordion != null ? row.options : { accordion: false, defaultOpen: true },
     regex: row.regex ?? '',
     min: row.min ?? null,
     max: row.max ?? null,
@@ -120,7 +130,12 @@ async function save() {
     defaultValue: form.value.defaultValue || null,
     placeholder: form.value.placeholder || null,
     helpText: form.value.helpText || null,
-    options: form.value.options,
+    options:
+      form.value.fieldType === 'table'
+        ? form.value.tableConfig
+        : form.value.fieldType === 'collapse'
+        ? form.value.collapseConfig
+        : form.value.options,
     regex: form.value.regex || null,
     min: form.value.min,
     max: form.value.max,
@@ -234,6 +249,13 @@ onMounted(load)
       </el-form-item>
       <el-form-item label="选项" v-if="['select','select_multi','radio','checkbox'].includes(form.fieldType)">
         <OptionsEditor v-model="form.options" />
+      </el-form-item>
+      <el-form-item label="折叠配置" v-if="form.fieldType === 'collapse'">
+        <el-switch v-model="form.collapseConfig.accordion" active-text="手风琴" />
+        <el-switch v-model="form.collapseConfig.defaultOpen" active-text="默认展开" style="margin-left: 12px" />
+      </el-form-item>
+      <el-form-item label="表格列" v-if="form.fieldType === 'table'">
+        <TableColumnsEditor v-model="form.tableConfig" />
       </el-form-item>
     </el-form>
     <template #footer>
