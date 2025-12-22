@@ -37,7 +37,16 @@ const FIELD_RENDERERS = {
     component: 'el-select',
     valueType: 'string',
     options: 'array<{label,value}>',
+    optionComponent: 'el-option',
     triggers: ['change'],
+  },
+  multiselect: {
+    component: 'el-select',
+    valueType: 'array',
+    options: 'array<{label,value}>',
+    optionComponent: 'el-option',
+    triggers: ['change'],
+    props: { multiple: true },
   },
   radio: {
     component: 'el-radio-group',
@@ -87,6 +96,7 @@ const TYPE_TO_RENDERER = {
   textarea: FIELD_RENDERERS.textarea,
   number: FIELD_RENDERERS.number,
   select: FIELD_RENDERERS.select,
+  multiselect: FIELD_RENDERERS.multiselect,
   radio: FIELD_RENDERERS.radio,
   checkbox: FIELD_RENDERERS.checkbox,
   date: FIELD_RENDERERS.date,
@@ -98,6 +108,13 @@ const TYPE_TO_RENDERER = {
 
 function getRenderer(field) {
   return TYPE_TO_RENDERER[field.type] || FIELD_RENDERERS.input
+}
+
+function optionProps(renderer, option) {
+  if (renderer.optionComponent === 'el-option') {
+    return { label: option.label, value: option.value }
+  }
+  return { label: option.value }
 }
 
 function isVisible(field) {
@@ -218,7 +235,7 @@ defineExpose({ validate, submit })
                 :is="getRenderer(field).optionComponent"
                 v-for="o in normalizeOptions(field.options)"
                 :key="o.value"
-                :label="o.value"
+                v-bind="optionProps(getRenderer(field), o)"
               >
                 {{ o.label }}
               </component>
