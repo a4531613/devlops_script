@@ -1,81 +1,81 @@
-# Case Management System (Koa + SQLite, Vue3 + Vite)
+# 案例管理系统（Koa + SQLite，Vue3 + Vite）
 
-This workspace contains a Koa + SQLite backend and a Vue3 + Vite frontend.
+该工作区包含 Koa + SQLite 后端，以及 Vue3 + Vite 前端。
 
-## Structure
+## 目录结构
 
-- `server-koa/` - Koa API server (SQLite)
-- `web-koa/` - Vue3 + Vite + Element Plus frontend
+- `server-koa/` - Koa API 服务（SQLite）
+- `web-koa/` - Vue3 + Vite + Element Plus 前端
 
-## Requirements
+## 环境要求
 
 - Node.js 20+
 - npm 10+
 
-## Backend (Koa)
+## 后端（Koa）
 
-Location: `server-koa`
+目录：`server-koa`
 
-Install:
+安装：
 ```
 cd server-koa
 npm install
 ```
 
-Run:
+启动：
 ```
 npm run dev
 ```
 
-Default port: `http://localhost:5175`
+默认端口：`http://localhost:5175`
 
-Health:
+健康检查：
 ```
 GET /api/health
 ```
 
-Role auth header:
+角色鉴权请求头：
 ```
 x-role-code: admin | editor | viewer
 ```
 
-Database:
-- SQLite file in `server-koa/data/app.db`
-- Schema file: `server-koa/src/db/schema.sql`
+数据库：
+- SQLite 文件：`server-koa/data/app.db`
+- Schema：`server-koa/src/db/schema.sql`
 
-Template config schema:
-- JSON Schema: `server-koa/src/schemas/templateConfig.schema.json`
+模板配置 JSON Schema：
+- `server-koa/src/schemas/templateConfig.schema.json`
 
-## Frontend (Vue3)
+## 前端（Vue3）
 
-Location: `web-koa`
+目录：`web-koa`
 
-Install:
+安装：
 ```
 cd web-koa
 npm install
 ```
 
-Run:
+启动：
 ```
 npm run dev
 ```
 
-Default port: `http://localhost:5173`
+默认端口：`http://localhost:5173`
 
-Proxy:
-- `/api` is proxied to `http://localhost:5175`
+代理：
+- `/api` 代理到 `http://localhost:5175`
 
-## Pages
+## 页面
 
-- Roles: `/roles`
-- Templates: `/templates`
-- Fields: `/fields`
-- Template config: `/templates/:id/config`
-- New case: `/cases/new`
-- Case search: `/cases/search`
+- 角色管理：`/roles`
+- 模板管理：`/templates`
+- 字段管理：`/fields`
+- 模板配置：`/templates/:id/config`
+- 新建案例：`/cases/new`
+- 案例查询：`/cases/search`
 
-## Template Config JSON Example
+## 模板配置 JSON 示例
 
 ```
 {
@@ -84,20 +84,19 @@ Proxy:
     {
       "fieldCode": "customerName",
       "span": 12,
-      "label": "Customer Name",
-      "placeholder": "Enter name",
+      "label": "客户名称",
+      "placeholder": "请输入客户名称",
       "visible": true,
       "readonly": false
     },
     {
       "fieldCode": "remark",
       "span": 24,
-      "label": "Remark",
-      "placeholder": "Notes",
+      "label": "备注",
+      "placeholder": "补充说明",
       "visible": true,
       "readonly": false
     }
   ]
 }
 ```
-
