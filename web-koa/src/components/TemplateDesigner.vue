@@ -49,14 +49,20 @@ const available = computed(() => {
 function buildConfigFromSelected(items) {
   return {
     version: 1,
-    layout: items.map((item) => ({
-      fieldCode: item.fieldDef.fieldCode,
-      span: item.ui.span,
-      label: item.ui.label || null,
-      placeholder: item.ui.placeholder || null,
-      visible: item.ui.visible,
-      readonly: item.ui.readonly,
-    })),
+    layout: items
+      .map((item) => {
+        const code = item?.fieldDef?.fieldCode || item?.fieldDef?.name
+        if (!code) return null
+        return {
+          fieldCode: code,
+          span: item?.ui?.span ?? 12,
+          label: item?.ui?.label || null,
+          placeholder: item?.ui?.placeholder || null,
+          visible: item?.ui?.visible ?? true,
+          readonly: item?.ui?.readonly ?? false,
+        }
+      })
+      .filter(Boolean),
   }
 }
 
@@ -85,6 +91,7 @@ function defaultValueFor(type) {
   if (type === 'checkbox') return []
   if (type === 'select_multi') return []
   if (type === 'switch') return false
+  if (type === 'table') return []
   return null
 }
 
@@ -122,11 +129,12 @@ function mockValueFor(field) {
     if (!Array.isArray(field.options?.columns)) return []
     const row = {}
     field.options.columns.forEach((c) => {
-      row[c.code] = c.type === 'number' ? 1 : c.type === 'select' ? (c.options?.[0]?.value ?? null) : ''
+      row[c.code] =
+        c.type === 'number' ? 1 : c.type === 'select' ? c.options?.[0]?.value ?? null : ''
     })
     return [row]
   }
-  if (type === 'divider' || type === 'section') return null
+  if (type === 'divider' || type === 'section' || type === 'collapse') return null
   return `${field.label || field.name || '字段'}示例`
 }
 
@@ -180,7 +188,7 @@ function cleanInvalidFields() {
   if (previewUseSaved.value && savedConfigRef.value?.layout) {
     savedConfigRef.value = sanitizeConfig(savedConfigRef.value, fields.value)
   } else {
-    selected.value = selected.value.filter((item) => !invalidCodes.includes(item.fieldDef.fieldCode))
+    selected.value = selected.value.filter((item) => !invalidCodes.includes(item.fieldDef?.fieldCode))
   }
   ElMessage.success('已清理无效字段')
 }
@@ -264,7 +272,7 @@ watch(
 <template>
   <div v-loading="loading">
     <div class="toolbar">
-    <div class="card-title">{{ template?.name || '模板' }} - 模板配置</div>
+      <div class="card-title">{{ template?.name || '模板' }} - 模板配置</div>
       <div class="toolbar-left">
         <el-button type="primary" :disabled="!selected.length" @click="save">保存配置</el-button>
         <el-button @click="openPreview">一键预览</el-button>
@@ -285,7 +293,7 @@ watch(
       show-icon
       :closable="false"
       style="margin: 12px 0"
-      title="字段池为空，请先维护字段池"
+      title="字段池为空，请先维护字段列表"
     />
 
     <el-row :gutter="12">
@@ -305,8 +313,8 @@ watch(
           >
             <template #item="{ element }">
               <div class="drag-card" style="margin-bottom: 8px; cursor: grab">
-                <div style="font-weight: 600">{{ element.fieldName }}</div>
-                <div class="muted">{{ element.fieldCode }} · {{ element.fieldType }}</div>
+                <div style="font-weight: 600">{{ element?.fieldName || element?.fieldCode || '字段' }}</div>
+                <div class="muted">{{ element?.fieldCode || '-' }} · {{ element?.fieldType || '-' }}</div>
               </div>
             </template>
           </Draggable>
@@ -330,7 +338,7 @@ watch(
                 <div style="display: flex; justify-content: space-between; align-items: center; gap: 10px">
                   <div style="display: flex; align-items: center; gap: 8px">
                     <div class="drag-handle" style="cursor: move; color: #6b7280">☰</div>
-                    <div style="font-weight: 600">{{ element.fieldDef.fieldName }}</div>
+                    <div style="font-weight: 600">{{ element.fieldDef?.fieldName || '字段' }}</div>
                   </div>
                   <el-button link type="danger" @click="removeAt(index)">移除</el-button>
                 </div>
@@ -388,7 +396,11 @@ watch(
       <div class="toolbar" style="margin-bottom: 8px">
         <div class="toolbar-left">
           <el-switch v-model="previewReadonly" active-text="只读预览" />
-          <el-switch v-model="previewUseSaved" active-text="使用已保存配置" :disabled="!savedConfigRef?.layout" />
+          <el-switch
+            v-model="previewUseSaved"
+            active-text="使用已保存配置"
+            :disabled="!savedConfigRef?.layout"
+          />
         </div>
         <div class="toolbar-left">
           <el-button @click="fillMock">填充示例数据</el-button>
