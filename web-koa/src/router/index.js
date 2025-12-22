@@ -7,6 +7,7 @@ import TemplateFields from '../views/TemplateFields.vue'
 import TemplateConfigPage from '../views/TemplateConfigPage.vue'
 import CaseNewPage from '../views/CaseNewPage.vue'
 import CaseSearchPage from '../views/CaseSearchPage.vue'
+import CaseDetailPage from '../views/CaseDetailPage.vue'
 
 const router = createRouter({
   history: createWebHistory(),
@@ -28,6 +29,7 @@ const router = createRouter({
     },
     { path: '/cases/new', name: 'caseNew', component: CaseNewPage, meta: { title: '新建案例' } },
     { path: '/cases/search', name: 'caseSearch', component: CaseSearchPage, meta: { title: '案例查询' } },
+    { path: '/cases/:id', name: 'caseDetail', component: CaseDetailPage, meta: { title: '案例详情' } },
   ],
 })
 

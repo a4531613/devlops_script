@@ -1,9 +1,13 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
 import dayjs from 'dayjs'
+import { useRouter } from 'vue-router'
+import { ElMessage } from 'element-plus'
 import { api } from '../api/client'
 import DynamicForm from '../components/DynamicForm.vue'
-import { mergeConfigWithFieldDefs } from '../lib/templateConfig'
+import { buildSchemaFromFields, mergeConfigWithFieldDefs } from '../lib/templateConfig'
+
+const router = useRouter()
 
 const templates = ref([])
 const templateId = ref('')
@@ -15,16 +19,21 @@ const rows = ref([])
 
 const drawerOpen = ref(false)
 const detailLoading = ref(false)
-const detail = ref(null)
+const detailCase = ref(null)
+const detailTemplate = ref(null)
 const detailConfig = ref(null)
-const detailPool = ref([])
+const detailFields = ref([])
+const detailValues = ref({})
 
 const templateMap = computed(() => new Map(templates.value.map((t) => [t.id, t.name])))
-
-const detailSchema = computed(() => {
-  const merged = mergeConfigWithFieldDefs(detailConfig.value, detailPool.value)
-  return merged.fields
-})
+const useFallback = computed(() => !detailConfig.value?.layout?.length)
+const detailMerged = computed(() => mergeConfigWithFieldDefs(detailConfig.value, detailFields.value))
+const detailSchema = computed(() =>
+  useFallback.value ? buildSchemaFromFields(detailFields.value) : detailMerged.value.fields
+)
+const detailInvalidCodes = computed(() =>
+  useFallback.value ? [] : detailMerged.value.invalidCodes
+)
 
 async function loadTemplates() {
   templates.value = (await api.get('/templates')).data
@@ -46,21 +55,35 @@ async function search() {
   }
 }
 
+function goDetailPage(row) {
+  router.push(`/cases/${row.id}`)
+}
+
+async function copyLink(row) {
+  const url = `${window.location.origin}/cases/${row.id}`
+  if (navigator?.clipboard?.writeText) {
+    await navigator.clipboard.writeText(url)
+    ElMessage.success('已复制链接')
+    return
+  }
+  ElMessage.warning('当前环境不支持剪贴板')
+}
+
 async function openDetail(row) {
   drawerOpen.value = true
   detailLoading.value = true
-  detail.value = null
+  detailCase.value = null
+  detailTemplate.value = null
   detailConfig.value = null
-  detailPool.value = []
+  detailFields.value = []
+  detailValues.value = {}
   try {
     const d = (await api.get(`/cases/${row.id}`)).data
-    detail.value = d
-    const [configRes, poolRes] = await Promise.all([
-      api.get(`/templates/${d.templateId}/config`),
-      api.get(`/templates/${d.templateId}/fields`),
-    ])
-    detailConfig.value = configRes.data
-    detailPool.value = poolRes.data
+    detailCase.value = d.case
+    detailTemplate.value = d.template
+    detailConfig.value = d.config_json
+    detailFields.value = d.fields || []
+    detailValues.value = d.data_json || {}
   } finally {
     detailLoading.value = false
   }
@@ -80,7 +103,7 @@ onMounted(async () => {
           <el-option v-for="t in templates" :key="t.id" :label="t.name" :value="t.id" />
         </el-select>
       </el-form-item>
-      <el-form-item label="关键字">
+      <el-form-item label="关键词">
         <el-input v-model="keyword" placeholder="标题包含" clearable style="width: 220px" />
       </el-form-item>
       <el-form-item label="时间">
@@ -103,28 +126,53 @@ onMounted(async () => {
       <el-table-column prop="title" label="标题" min-width="240" />
       <el-table-column prop="templateName" label="模板" min-width="180" />
       <el-table-column prop="createdAt" label="创建时间" min-width="220" />
-      <el-table-column label="操作" width="120" align="center">
+      <el-table-column label="操作" width="220" align="center">
         <template #default="{ row }">
-          <el-button link type="primary" @click="openDetail(row)">查看</el-button>
+          <el-button link type="primary" @click="goDetailPage(row)">查看详情</el-button>
+          <el-button link type="primary" @click="openDetail(row)">预览</el-button>
+          <el-button link type="primary" @click="copyLink(row)">复制链接</el-button>
         </template>
       </el-table-column>
     </el-table>
-    <div class="muted" style="margin-top: 8px">提示：双击行也可查看详情。</div>
+    <div class="muted" style="margin-top: 8px">提示：双击行也可预览详情。</div>
   </el-card>
 
   <el-drawer v-model="drawerOpen" size="520px" title="案例详情">
     <div v-loading="detailLoading">
-      <template v-if="detail">
+      <template v-if="detailCase">
         <el-descriptions :column="1" border>
-          <el-descriptions-item label="标题">{{ detail.title }}</el-descriptions-item>
+          <el-descriptions-item label="案例编号">{{ detailCase.case_no || detailCase.id }}</el-descriptions-item>
+          <el-descriptions-item label="标题">{{ detailCase.title }}</el-descriptions-item>
           <el-descriptions-item label="模板">
-            {{ templateMap.get(detail.templateId) || detail.templateName }}
+            {{ templateMap.get(detailCase.template_id) || detailTemplate?.name || '-' }}
           </el-descriptions-item>
-          <el-descriptions-item label="创建时间">{{ detail.createdAt }}</el-descriptions-item>
+          <el-descriptions-item label="创建时间">{{ detailCase.created_at }}</el-descriptions-item>
         </el-descriptions>
 
-        <div class="card-title" style="margin-top: 12px">字段值</div>
-        <DynamicForm :fields="detailSchema" v-model="detail.values" readonly />
+        <div class="toolbar" style="margin: 12px 0 6px">
+          <div class="card-title">字段值</div>
+          <el-button link type="primary" @click="goDetailPage(detailCase)">打开独立页面</el-button>
+        </div>
+
+        <el-alert
+          v-if="useFallback && detailFields.length"
+          type="warning"
+          show-icon
+          :closable="false"
+          title="该模板未配置布局，已按默认顺序展示"
+          style="margin-bottom: 12px"
+        />
+
+        <el-alert
+          v-if="detailInvalidCodes.length"
+          type="error"
+          show-icon
+          :closable="false"
+          :title="`配置引用不存在字段：${detailInvalidCodes.join('、')}`"
+          style="margin-bottom: 12px"
+        />
+
+        <DynamicForm :fields="detailSchema" v-model="detailValues" mode="readonly" />
       </template>
       <template v-else>
         <div class="muted">-</div>

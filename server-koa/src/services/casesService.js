@@ -25,6 +25,11 @@ function createCasesService(casesRepo) {
       if (!c) throw new HttpError(404, "not found");
       return c;
     },
+    getDetail: (id) => {
+      const c = casesRepo.getDetail(id);
+      if (!c) throw new HttpError(404, "not found");
+      return c;
+    },
   };
 }
 

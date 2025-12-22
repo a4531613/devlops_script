@@ -19,10 +19,9 @@ function createCasesController(service) {
     },
     getById: async (ctx) => {
       const id = ctx.params.id;
-      ctx.body = service.getById(id);
+      ctx.body = service.getDetail(id);
     },
   };
 }
 
 module.exports = { createCasesController };
-

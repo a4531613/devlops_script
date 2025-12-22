@@ -43,3 +43,26 @@ export function sanitizeConfig(config, fieldDefs) {
     layout: layout.filter((item) => codes.has(item.fieldCode)),
   }
 }
+
+export function buildSchemaFromFields(fieldDefs) {
+  return fieldDefs.map((fieldDef) => ({
+    id: fieldDef.fieldCode,
+    label: fieldDef.fieldName,
+    name: fieldDef.fieldCode,
+    type: fieldDef.fieldType,
+    options: fieldDef.options,
+    required: !!fieldDef.required,
+    regex: fieldDef.regex || null,
+    min: fieldDef.min ?? null,
+    max: fieldDef.max ?? null,
+    defaultValue: fieldDef.defaultValue ?? null,
+    helpText: fieldDef.helpText ?? null,
+    config: {
+      label: null,
+      placeholder: fieldDef.placeholder || null,
+      span: 12,
+      visible: true,
+      readonly: false,
+    },
+  }))
+}
