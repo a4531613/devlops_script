@@ -1,4 +1,4 @@
-const { requireArray, optionalString } = require("../utils/validators");
+const { requireString, optionalString } = require("../utils/validators");
 
 function createTemplatesController(service) {
   return {
@@ -26,16 +26,73 @@ function createTemplatesController(service) {
       const templateId = ctx.params.id;
       ctx.body = service.listFields(templateId);
     },
-    bindFields: async (ctx) => {
+    createField: async (ctx) => {
       const templateId = ctx.params.id;
-      const fieldIds = requireArray(ctx.request.body?.fieldIds, "fieldIds");
-      service.bindFields({ templateId, fieldIds });
-      ctx.body = { ok: true };
+      const fieldCode = requireString(ctx.request.body?.fieldCode, "fieldCode");
+      const fieldName = requireString(ctx.request.body?.fieldName, "fieldName");
+      const fieldType = requireString(ctx.request.body?.fieldType, "fieldType");
+      const required = !!ctx.request.body?.required;
+      const options = ctx.request.body?.options ?? null;
+      const defaultValue = ctx.request.body?.defaultValue ?? null;
+      const placeholder = ctx.request.body?.placeholder ?? null;
+      const helpText = ctx.request.body?.helpText ?? null;
+      const regex = ctx.request.body?.regex ?? null;
+      const min = ctx.request.body?.min ?? null;
+      const max = ctx.request.body?.max ?? null;
+      const status = ctx.request.body?.status ?? "active";
+      ctx.body = service.createField({
+        templateId,
+        fieldCode,
+        fieldName,
+        fieldType,
+        required,
+        options,
+        defaultValue,
+        placeholder,
+        helpText,
+        regex,
+        min,
+        max,
+        status,
+      });
     },
-    unbindField: async (ctx) => {
+    updateField: async (ctx) => {
       const templateId = ctx.params.id;
       const fieldId = ctx.params.fieldId;
-      service.unbindField({ templateId, fieldId });
+      const fieldCode = requireString(ctx.request.body?.fieldCode, "fieldCode");
+      const fieldName = requireString(ctx.request.body?.fieldName, "fieldName");
+      const fieldType = requireString(ctx.request.body?.fieldType, "fieldType");
+      const required = !!ctx.request.body?.required;
+      const options = ctx.request.body?.options ?? null;
+      const defaultValue = ctx.request.body?.defaultValue ?? null;
+      const placeholder = ctx.request.body?.placeholder ?? null;
+      const helpText = ctx.request.body?.helpText ?? null;
+      const regex = ctx.request.body?.regex ?? null;
+      const min = ctx.request.body?.min ?? null;
+      const max = ctx.request.body?.max ?? null;
+      const status = ctx.request.body?.status ?? "active";
+      service.updateField({
+        templateId,
+        fieldId,
+        fieldCode,
+        fieldName,
+        fieldType,
+        required,
+        options,
+        defaultValue,
+        placeholder,
+        helpText,
+        regex,
+        min,
+        max,
+        status,
+      });
+      ctx.body = { ok: true };
+    },
+    removeField: async (ctx) => {
+      const templateId = ctx.params.id;
+      const fieldId = ctx.params.fieldId;
+      service.removeField({ templateId, fieldId });
       ctx.body = { ok: true };
     },
     getConfig: async (ctx) => {
@@ -45,12 +102,7 @@ function createTemplatesController(service) {
     replaceConfig: async (ctx) => {
       const templateId = ctx.params.id;
       const body = ctx.request.body;
-      if (body && typeof body === "object" && !Array.isArray(body) && body.layout) {
-        service.replaceConfigFromJson({ templateId, configJson: body });
-      } else {
-        const items = requireArray(body, "body");
-        service.replaceConfig({ templateId, items });
-      }
+      service.replaceConfigFromJson({ templateId, configJson: body });
       ctx.body = { ok: true };
     },
   };

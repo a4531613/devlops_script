@@ -1,7 +1,7 @@
 <script setup>
 import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { Document, Files, List, Plus, Tickets, UserFilled } from '@element-plus/icons-vue'
+import { Document, List, Plus, Tickets, UserFilled } from '@element-plus/icons-vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -35,10 +35,6 @@ function nav(path) {
         <el-menu-item index="/templates">
           <el-icon><Document /></el-icon>
           <span>模板管理</span>
-        </el-menu-item>
-        <el-menu-item index="/fields">
-          <el-icon><Files /></el-icon>
-          <span>字段库</span>
         </el-menu-item>
         <el-menu-item index="/cases/new">
           <el-icon><Plus /></el-icon>

@@ -10,23 +10,19 @@ const { requestId } = require("./middlewares/requestId");
 
 const { createRolesRepo } = require("./repositories/rolesRepo");
 const { createTemplatesRepo } = require("./repositories/templatesRepo");
-const { createFieldsRepo } = require("./repositories/fieldsRepo");
-const { createTemplateFieldLinksRepo } = require("./repositories/templateFieldLinksRepo");
+const { createTemplateFieldsRepo } = require("./repositories/templateFieldsRepo");
 const { createConfigsRepo } = require("./repositories/configsRepo");
 const { createCasesRepo } = require("./repositories/casesRepo");
 
 const { createRolesService } = require("./services/rolesService");
-const { createFieldsService } = require("./services/fieldsService");
 const { createTemplatesService } = require("./services/templatesService");
 const { createCasesService } = require("./services/casesService");
 
 const { createRolesController } = require("./controllers/rolesController");
-const { createFieldsController } = require("./controllers/fieldsController");
 const { createTemplatesController } = require("./controllers/templatesController");
 const { createCasesController } = require("./controllers/casesController");
 
 const { createRolesRouter } = require("./routes/roles");
-const { createFieldsRouter } = require("./routes/fields");
 const { createTemplatesRouter } = require("./routes/templates");
 const { createCasesRouter } = require("./routes/cases");
 const { createRootRouter } = require("./routes");
@@ -37,28 +33,19 @@ function createApp() {
 
   const rolesRepo = createRolesRepo(db);
   const templatesRepo = createTemplatesRepo(db);
-  const fieldsRepo = createFieldsRepo(db);
-  const templateFieldLinksRepo = createTemplateFieldLinksRepo(db);
+  const templateFieldsRepo = createTemplateFieldsRepo(db);
   const configsRepo = createConfigsRepo(db);
   const casesRepo = createCasesRepo(db);
 
   const rolesService = createRolesService(rolesRepo);
-  const fieldsService = createFieldsService(fieldsRepo);
-  const templatesService = createTemplatesService(
-    templatesRepo,
-    fieldsRepo,
-    templateFieldLinksRepo,
-    configsRepo
-  );
+  const templatesService = createTemplatesService(templatesRepo, templateFieldsRepo, configsRepo);
   const casesService = createCasesService(casesRepo);
 
   const rolesController = createRolesController(rolesService);
-  const fieldsController = createFieldsController(fieldsService);
   const templatesController = createTemplatesController(templatesService);
   const casesController = createCasesController(casesService);
 
   const rolesRouter = createRolesRouter(rolesController);
-  const fieldsRouter = createFieldsRouter(fieldsController);
   const templatesRouter = createTemplatesRouter(templatesController);
   const casesRouter = createCasesRouter(casesController);
 
@@ -70,7 +57,7 @@ function createApp() {
   app.use(bodyParser({ jsonLimit: "2mb" }));
   app.use(auth());
 
-  const rootRouter = createRootRouter({ rolesRouter, fieldsRouter, templatesRouter, casesRouter });
+  const rootRouter = createRootRouter({ rolesRouter, templatesRouter, casesRouter });
   app.use(rootRouter.routes());
   app.use(rootRouter.allowedMethods());
 

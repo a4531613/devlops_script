@@ -13,6 +13,7 @@ function validateTemplateConfigJson(config, fieldCodes) {
 
   const layout = [];
   const seen = new Set();
+  const missing = new Set();
   config.layout.forEach((item, index) => {
     if (!item || typeof item !== "object" || Array.isArray(item)) {
       throw new HttpError(400, `layout[${index}] must be object`);
@@ -22,7 +23,8 @@ function validateTemplateConfigJson(config, fieldCodes) {
       throw new HttpError(400, `layout[${index}].fieldCode required`);
     }
     if (!fieldCodes.has(fieldCode)) {
-      throw new HttpError(400, `layout[${index}].fieldCode not found`);
+      missing.add(fieldCode);
+      return;
     }
     if (seen.has(fieldCode)) {
       throw new HttpError(400, `layout[${index}].fieldCode duplicated`);
@@ -44,8 +46,11 @@ function validateTemplateConfigJson(config, fieldCodes) {
     });
   });
 
+  if (missing.size) {
+    throw new HttpError(400, `fieldCode not found: ${Array.from(missing).join(",")}`);
+  }
+
   return { version: 1, layout };
 }
 
 module.exports = { validateTemplateConfigJson };
-

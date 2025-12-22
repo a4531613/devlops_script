@@ -11,14 +11,10 @@ function createCasesService(casesRepo) {
       if (!title) throw new HttpError(400, "title required");
       const id = randomUUID();
       const createdAt = nowIso();
-      const valueIds = {};
-      const valuesJson = {};
-      Object.entries(values || {}).forEach(([fieldId, value]) => {
-        valueIds[fieldId] = randomUUID();
-        valuesJson[fieldId] = jsonStringifyOrNull(value);
-      });
+      const dataId = randomUUID();
+      const dataJson = jsonStringifyOrNull(values || {}) || "{}";
       try {
-        casesRepo.create({ id, templateId, title, createdAt, values: values || {}, valueIds, valuesJson });
+        casesRepo.create({ id, templateId, title, createdAt, dataId, dataJson });
       } catch (err) {
         throw new HttpError(400, err.message);
       }
@@ -33,4 +29,3 @@ function createCasesService(casesRepo) {
 }
 
 module.exports = { createCasesService };
-

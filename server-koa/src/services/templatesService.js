@@ -1,10 +1,10 @@
 const { randomUUID } = require("node:crypto");
 const { nowIso } = require("../utils/time");
-const { jsonStringifyOrNull } = require("../utils/json");
+const { jsonStringifyOrNull, parseJsonOrNull } = require("../utils/json");
 const { HttpError } = require("../utils/errors");
 const { validateTemplateConfigJson } = require("../utils/templateConfig");
 
-function createTemplatesService(templatesRepo, fieldsRepo, templateFieldLinksRepo, configsRepo) {
+function createTemplatesService(templatesRepo, templateFieldsRepo, configsRepo) {
   return {
     list: () => templatesRepo.list(),
     create: ({ name, description }) => {
@@ -25,78 +25,70 @@ function createTemplatesService(templatesRepo, fieldsRepo, templateFieldLinksRep
       const info = templatesRepo.remove(id);
       if (info.changes === 0) throw new HttpError(404, "not found");
     },
-    listFields: (templateId) => templateFieldLinksRepo.list(templateId),
-    bindFields: ({ templateId, fieldIds }) => {
+    listFields: (templateId) => templateFieldsRepo.list(templateId),
+    createField: (input) => {
+      const id = randomUUID();
       const ts = nowIso();
-      const rows = fieldIds.map((fieldId) => ({
-        id: randomUUID(),
-        templateId,
-        fieldId,
-        required: 0,
-        status: "active",
-        createdAt: ts,
-      }));
       try {
-        templateFieldLinksRepo.insertMany(rows);
+        templateFieldsRepo.insert({
+          id,
+          templateId: input.templateId,
+          fieldCode: input.fieldCode,
+          fieldName: input.fieldName,
+          fieldType: input.fieldType,
+          required: !!input.required,
+          defaultValue: input.defaultValue ?? null,
+          placeholder: input.placeholder ?? null,
+          helpText: input.helpText ?? null,
+          optionsJson: jsonStringifyOrNull(input.options ?? null),
+          regex: input.regex ?? null,
+          min: input.min ?? null,
+          max: input.max ?? null,
+          status: input.status ?? "active",
+          createdAt: ts,
+          updatedAt: ts,
+        });
       } catch (err) {
         throw new HttpError(400, err.message);
       }
+      return { id };
     },
-    unbindField: ({ templateId, fieldId }) => {
-      const info = templateFieldLinksRepo.remove(templateId, fieldId);
+    updateField: (input) => {
+      const ts = nowIso();
+      const info = templateFieldsRepo.update({
+        id: input.fieldId,
+        templateId: input.templateId,
+        fieldCode: input.fieldCode,
+        fieldName: input.fieldName,
+        fieldType: input.fieldType,
+        required: !!input.required,
+        defaultValue: input.defaultValue ?? null,
+        placeholder: input.placeholder ?? null,
+        helpText: input.helpText ?? null,
+        optionsJson: jsonStringifyOrNull(input.options ?? null),
+        regex: input.regex ?? null,
+        min: input.min ?? null,
+        max: input.max ?? null,
+        status: input.status ?? "active",
+        updatedAt: ts,
+      });
       if (info.changes === 0) throw new HttpError(404, "not found");
     },
-    listConfig: (templateId) => configsRepo.list(templateId),
-    getConfigJson: (templateId) => {
-      const items = configsRepo.list(templateId);
-      return {
-        version: 1,
-        layout: items.map((item) => ({
-          fieldCode: item.fieldDef.name,
-          span: item.config?.span ?? 12,
-          label: item.config?.label ?? item.fieldDef.label,
-          placeholder: item.config?.placeholder ?? null,
-          visible: item.config?.visible ?? true,
-          readonly: item.config?.readonly ?? false,
-        })),
-      };
+    removeField: ({ templateId, fieldId }) => {
+      const info = templateFieldsRepo.remove(fieldId, templateId);
+      if (info.changes === 0) throw new HttpError(404, "not found");
     },
-    replaceConfig: ({ templateId, items }) => {
-      const payload = items.map((item, index) => ({
-        id: randomUUID(),
-        fieldId: item.fieldId,
-        sortOrder: typeof item.sortOrder === "number" ? item.sortOrder : index,
-        required: !!item.required,
-        configJson: jsonStringifyOrNull(item.config ?? {}),
-      }));
-      try {
-        configsRepo.replaceAll(templateId, payload);
-      } catch (err) {
-        throw new HttpError(400, err.message);
-      }
+    getConfigJson: (templateId) => {
+      const raw = configsRepo.get(templateId);
+      return raw ? parseJsonOrNull(raw) : { version: 1, layout: [] };
     },
     replaceConfigFromJson: ({ templateId, configJson }) => {
-      const pool = templateFieldLinksRepo.list(templateId);
-      const fieldMap = new Map(pool.map((f) => [f.name, f]));
-      const fieldCodes = new Set(fieldMap.keys());
+      const fields = templateFieldsRepo.list(templateId);
+      const fieldCodes = new Set(fields.map((f) => f.fieldCode));
       const normalized = validateTemplateConfigJson(configJson, fieldCodes);
-
-      const payload = normalized.layout.map((item, index) => ({
-        id: randomUUID(),
-        fieldId: fieldMap.get(item.fieldCode).id,
-        sortOrder: index,
-        required: false,
-        configJson: jsonStringifyOrNull({
-          label: item.label,
-          placeholder: item.placeholder,
-          span: item.span,
-          visible: item.visible,
-          readonly: item.readonly,
-        }),
-      }));
-
+      const ts = nowIso();
       try {
-        configsRepo.replaceAll(templateId, payload);
+        configsRepo.save(templateId, jsonStringifyOrNull(normalized) || "{}", ts);
       } catch (err) {
         throw new HttpError(400, err.message);
       }

@@ -31,15 +31,31 @@ function migrate(db) {
     }
   };
 
-  const legacyConfig = hasColumn("template_field_configs", "template_field_id");
-  const legacyCaseValues = hasColumn("case_values", "template_field_id");
   const legacyTemplateFields = hasColumn("template_fields", "template_id");
+  const legacyFields = hasColumn("fields", "name");
+  const legacyLinks = hasColumn("template_field_links", "field_id");
+  const legacyTemplateConfig = hasColumn("template_config", "config_json");
+  const legacyCaseData = hasColumn("case_data", "data_json");
+  const hasTemplateFieldConfigs = hasColumn("template_field_configs", "template_id");
+  const hasCaseValues = hasColumn("case_values", "case_id");
 
-  if (legacyConfig || legacyCaseValues || legacyTemplateFields) {
+  if (
+    legacyTemplateFields ||
+    legacyFields ||
+    legacyLinks ||
+    legacyTemplateConfig ||
+    legacyCaseData ||
+    hasTemplateFieldConfigs ||
+    hasCaseValues
+  ) {
     db.pragma("foreign_keys = OFF");
-    if (legacyConfig) db.exec("DROP TABLE IF EXISTS template_field_configs;");
-    if (legacyCaseValues) db.exec("DROP TABLE IF EXISTS case_values;");
+    if (hasTemplateFieldConfigs) db.exec("DROP TABLE IF EXISTS template_field_configs;");
+    if (hasCaseValues) db.exec("DROP TABLE IF EXISTS case_values;");
     if (legacyTemplateFields) db.exec("DROP TABLE IF EXISTS template_fields;");
+    if (legacyFields) db.exec("DROP TABLE IF EXISTS fields;");
+    if (legacyLinks) db.exec("DROP TABLE IF EXISTS template_field_links;");
+    db.exec("DROP TABLE IF EXISTS template_config;");
+    db.exec("DROP TABLE IF EXISTS case_data;");
     db.pragma("foreign_keys = ON");
     db.exec(schemaSql);
   }

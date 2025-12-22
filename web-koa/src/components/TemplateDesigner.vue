@@ -41,14 +41,16 @@ const available = computed(() => {
   const base = fields.value.filter((f) => !chosen.has(f.id))
   if (!q.value.trim()) return base
   const s = q.value.trim().toLowerCase()
-  return base.filter((f) => f.name.toLowerCase().includes(s) || f.label.toLowerCase().includes(s))
+  return base.filter(
+    (f) => f.fieldCode.toLowerCase().includes(s) || f.fieldName.toLowerCase().includes(s)
+  )
 })
 
 function buildConfigFromSelected(items) {
   return {
     version: 1,
     layout: items.map((item) => ({
-      fieldCode: item.fieldDef.name,
+      fieldCode: item.fieldDef.fieldCode,
       span: item.ui.span,
       label: item.ui.label || null,
       placeholder: item.ui.placeholder || null,
@@ -70,7 +72,7 @@ function cloneField(field) {
     fieldId: field.id,
     fieldDef: field,
     ui: {
-      label: field.label,
+      label: field.fieldName,
       placeholder: '',
       span: 12,
       visible: true,
@@ -81,7 +83,7 @@ function cloneField(field) {
 
 function defaultValueFor(type) {
   if (type === 'checkbox') return []
-  if (type === 'multiselect') return []
+  if (type === 'select_multi') return []
   if (type === 'switch') return false
   return null
 }
@@ -104,7 +106,7 @@ function mockValueFor(field) {
     const opts = normalizeOptions(field.options)
     return opts.length ? [opts[0].value] : []
   }
-  if (type === 'multiselect') {
+  if (type === 'select_multi') {
     const opts = normalizeOptions(field.options)
     return opts.length ? [opts[0].value] : []
   }
@@ -170,7 +172,7 @@ function cleanInvalidFields() {
   if (previewUseSaved.value && savedConfigRef.value?.layout) {
     savedConfigRef.value = sanitizeConfig(savedConfigRef.value, fields.value)
   } else {
-    selected.value = selected.value.filter((item) => !invalidCodes.includes(item.fieldDef.name))
+    selected.value = selected.value.filter((item) => !invalidCodes.includes(item.fieldDef.fieldCode))
   }
   ElMessage.success('已清理无效字段')
 }
@@ -254,7 +256,7 @@ watch(
 <template>
   <div v-loading="loading">
     <div class="toolbar">
-      <div class="card-title">{{ template?.name || '模板' }} - 模板配置</div>
+    <div class="card-title">{{ template?.name || '模板' }} - 模板配置</div>
       <div class="toolbar-left">
         <el-button type="primary" :disabled="!selected.length" @click="save">保存配置</el-button>
         <el-button @click="openPreview">一键预览</el-button>
@@ -295,8 +297,8 @@ watch(
           >
             <template #item="{ element }">
               <div class="drag-card" style="margin-bottom: 8px; cursor: grab">
-                <div style="font-weight: 600">{{ element.label }}</div>
-                <div class="muted">{{ element.name }} · {{ element.type }}</div>
+                <div style="font-weight: 600">{{ element.fieldName }}</div>
+                <div class="muted">{{ element.fieldCode }} · {{ element.fieldType }}</div>
               </div>
             </template>
           </Draggable>
@@ -320,7 +322,7 @@ watch(
                 <div style="display: flex; justify-content: space-between; align-items: center; gap: 10px">
                   <div style="display: flex; align-items: center; gap: 8px">
                     <div class="drag-handle" style="cursor: move; color: #6b7280">☰</div>
-                    <div style="font-weight: 600">{{ element.fieldDef.label }}</div>
+                    <div style="font-weight: 600">{{ element.fieldDef.fieldName }}</div>
                   </div>
                   <el-button link type="danger" @click="removeAt(index)">移除</el-button>
                 </div>

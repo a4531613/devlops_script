@@ -52,7 +52,7 @@ function goConfig(row) {
 }
 
 function goFieldPool(row) {
-  router.push(`/templates/${row.id}/field-pool`)
+  router.push(`/templates/${row.id}/fields`)
 }
 
 onMounted(load)
@@ -71,8 +71,8 @@ onMounted(load)
       <el-table-column prop="created_at" label="创建时间" min-width="220" />
       <el-table-column label="操作" width="260" align="center">
         <template #default="{ row }">
-          <el-button link type="primary" @click="goConfig(row)">配置</el-button>
-          <el-button link type="primary" @click="goFieldPool(row)">字段池</el-button>
+          <el-button link type="primary" @click="goFieldPool(row)">字段管理</el-button>
+          <el-button link type="primary" @click="goConfig(row)">模板配置</el-button>
           <el-button link type="primary" @click="edit(row)">编辑</el-button>
           <el-button link type="danger" @click="remove(row)">删除</el-button>
         </template>

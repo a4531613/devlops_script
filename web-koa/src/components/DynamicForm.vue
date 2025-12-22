@@ -96,6 +96,7 @@ const TYPE_TO_RENDERER = {
   textarea: FIELD_RENDERERS.textarea,
   number: FIELD_RENDERERS.number,
   select: FIELD_RENDERERS.select,
+  select_multi: FIELD_RENDERERS.multiselect,
   multiselect: FIELD_RENDERERS.multiselect,
   radio: FIELD_RENDERERS.radio,
   checkbox: FIELD_RENDERERS.checkbox,

@@ -1,5 +1,5 @@
 export function mergeConfigWithFieldDefs(config, fieldDefs) {
-  const map = new Map(fieldDefs.map((f) => [f.name, f]))
+  const map = new Map(fieldDefs.map((f) => [f.fieldCode, f]))
   const layout = Array.isArray(config?.layout) ? config.layout : []
   const invalidCodes = []
   const fields = []
@@ -11,15 +11,19 @@ export function mergeConfigWithFieldDefs(config, fieldDefs) {
       return
     }
     fields.push({
-      id: fieldDef.id,
-      label: item.label || fieldDef.label,
-      name: fieldDef.name,
-      type: fieldDef.type,
+      id: fieldDef.fieldCode,
+      label: item.label || fieldDef.fieldName,
+      name: fieldDef.fieldCode,
+      type: fieldDef.fieldType,
       options: fieldDef.options,
-      required: !!item.required,
+      required: !!fieldDef.required,
+      regex: fieldDef.regex || null,
+      min: fieldDef.min ?? null,
+      max: fieldDef.max ?? null,
+      defaultValue: fieldDef.defaultValue ?? null,
       config: {
         label: item.label || null,
-        placeholder: item.placeholder || null,
+        placeholder: item.placeholder || fieldDef.placeholder || null,
         span: item.span ?? 12,
         visible: item.visible ?? true,
         readonly: item.readonly ?? false,
@@ -31,11 +35,10 @@ export function mergeConfigWithFieldDefs(config, fieldDefs) {
 }
 
 export function sanitizeConfig(config, fieldDefs) {
-  const codes = new Set(fieldDefs.map((f) => f.name))
+  const codes = new Set(fieldDefs.map((f) => f.fieldCode))
   const layout = Array.isArray(config?.layout) ? config.layout : []
   return {
     version: 1,
     layout: layout.filter((item) => codes.has(item.fieldCode)),
   }
 }
-

@@ -13,8 +13,8 @@ function createCasesRepo(db) {
   const insertCaseStmt = db.prepare(
     "INSERT INTO cases (id, template_id, title, created_at) VALUES (?, ?, ?, ?)"
   );
-  const insertValueStmt = db.prepare(
-    "INSERT INTO case_values (id, case_id, field_id, value_json) VALUES (?, ?, ?, ?)"
+  const insertDataStmt = db.prepare(
+    "INSERT INTO case_data (id, case_id, data_json) VALUES (?, ?, ?)"
   );
   const getCaseStmt = db.prepare(
     `
@@ -24,7 +24,7 @@ function createCasesRepo(db) {
     WHERE c.id = ?
     `
   );
-  const listValuesStmt = db.prepare("SELECT field_id, value_json FROM case_values WHERE case_id = ?");
+  const getDataStmt = db.prepare("SELECT data_json FROM case_data WHERE case_id = ?");
 
   return {
     list: (filters) => {
@@ -65,21 +65,15 @@ function createCasesRepo(db) {
     create: (row) => {
       const tx = db.transaction(() => {
         insertCaseStmt.run(row.id, row.templateId, row.title, row.createdAt);
-        Object.entries(row.values).forEach(([fieldId, value]) => {
-          insertValueStmt.run(row.valueIds[fieldId], row.id, fieldId, row.valuesJson[fieldId]);
-        });
+        insertDataStmt.run(row.dataId, row.id, row.dataJson);
       });
       tx();
     },
     getById: (id) => {
       const c = getCaseStmt.get(id);
       if (!c) return null;
-      const values = listValuesStmt
-        .all(id)
-        .reduce((acc, r) => {
-          acc[r.field_id] = parseJsonOrNull(r.value_json);
-          return acc;
-        }, {});
+      const dataRow = getDataStmt.get(id);
+      const values = dataRow ? parseJsonOrNull(dataRow.data_json) : {};
       return {
         id: c.id,
         templateId: c.template_id,

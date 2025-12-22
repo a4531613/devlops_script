@@ -44,7 +44,11 @@ async function loadConfig() {
   form.values = {}
   schema.value.forEach((c) => {
     const t = c.type
-    if (t === 'checkbox' || t === 'multiselect') form.values[c.id] = []
+    if (c.defaultValue != null && c.defaultValue !== '') {
+      form.values[c.id] = c.defaultValue
+      return
+    }
+    if (t === 'checkbox' || t === 'select_multi') form.values[c.id] = []
     else if (t === 'switch') form.values[c.id] = false
     else form.values[c.id] = null
   })
