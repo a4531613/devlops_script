@@ -1,0 +1,28 @@
+{
+  "$id": "template-config.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "TemplateConfig",
+  "type": "object",
+  "required": ["version", "layout"],
+  "properties": {
+    "version": { "type": "integer", "const": 1 },
+    "layout": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["fieldCode", "span"],
+        "properties": {
+          "fieldCode": { "type": "string", "minLength": 1 },
+          "span": { "type": "integer", "minimum": 1, "maximum": 24 },
+          "label": { "type": ["string", "null"] },
+          "placeholder": { "type": ["string", "null"] },
+          "visible": { "type": "boolean" },
+          "readonly": { "type": "boolean" }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}
+
