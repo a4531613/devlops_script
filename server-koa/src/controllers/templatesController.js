@@ -1,4 +1,4 @@
-const { requireArray, requireString, optionalString } = require("../utils/validators");
+const { requireArray, optionalString } = require("../utils/validators");
 
 function createTemplatesController(service) {
   return {
@@ -26,33 +26,21 @@ function createTemplatesController(service) {
       const templateId = ctx.params.id;
       ctx.body = service.listFields(templateId);
     },
-    createField: async (ctx) => {
+    bindFields: async (ctx) => {
       const templateId = ctx.params.id;
-      const name = requireString(ctx.request.body?.name, "name");
-      const label = requireString(ctx.request.body?.label, "label");
-      const type = requireString(ctx.request.body?.type, "type");
-      const options = ctx.request.body?.options ?? null;
-      ctx.body = service.createField({ templateId, name, label, type, options });
-    },
-    updateField: async (ctx) => {
-      const templateId = ctx.params.id;
-      const fieldId = ctx.params.fieldId;
-      const name = requireString(ctx.request.body?.name, "name");
-      const label = requireString(ctx.request.body?.label, "label");
-      const type = requireString(ctx.request.body?.type, "type");
-      const options = ctx.request.body?.options ?? null;
-      service.updateField({ templateId, fieldId, name, label, type, options });
+      const fieldIds = requireArray(ctx.request.body?.fieldIds, "fieldIds");
+      service.bindFields({ templateId, fieldIds });
       ctx.body = { ok: true };
     },
-    removeField: async (ctx) => {
+    unbindField: async (ctx) => {
       const templateId = ctx.params.id;
       const fieldId = ctx.params.fieldId;
-      service.removeField({ templateId, fieldId });
+      service.unbindField({ templateId, fieldId });
       ctx.body = { ok: true };
     },
     getConfig: async (ctx) => {
       const templateId = ctx.params.id;
-      ctx.body = service.listConfig(templateId);
+      ctx.body = service.getConfigJson(templateId);
     },
     replaceConfig: async (ctx) => {
       const templateId = ctx.params.id;

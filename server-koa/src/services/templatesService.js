@@ -4,7 +4,7 @@ const { jsonStringifyOrNull } = require("../utils/json");
 const { HttpError } = require("../utils/errors");
 const { validateTemplateConfigJson } = require("../utils/templateConfig");
 
-function createTemplatesService(templatesRepo, fieldsRepo, configsRepo) {
+function createTemplatesService(templatesRepo, fieldsRepo, templateFieldLinksRepo, configsRepo) {
   return {
     list: () => templatesRepo.list(),
     create: ({ name, description }) => {
@@ -25,44 +25,42 @@ function createTemplatesService(templatesRepo, fieldsRepo, configsRepo) {
       const info = templatesRepo.remove(id);
       if (info.changes === 0) throw new HttpError(404, "not found");
     },
-    listFields: (templateId) => fieldsRepo.list(templateId),
-    createField: ({ templateId, name, label, type, options }) => {
-      const id = randomUUID();
+    listFields: (templateId) => templateFieldLinksRepo.list(templateId),
+    bindFields: ({ templateId, fieldIds }) => {
       const ts = nowIso();
+      const rows = fieldIds.map((fieldId) => ({
+        id: randomUUID(),
+        templateId,
+        fieldId,
+        required: 0,
+        status: "active",
+        createdAt: ts,
+      }));
       try {
-        fieldsRepo.insert({
-          id,
-          templateId,
-          name,
-          label,
-          type,
-          optionsJson: jsonStringifyOrNull(options),
-          createdAt: ts,
-          updatedAt: ts,
-        });
+        templateFieldLinksRepo.insertMany(rows);
       } catch (err) {
         throw new HttpError(400, err.message);
       }
-      return { id };
     },
-    updateField: ({ templateId, fieldId, name, label, type, options }) => {
-      const ts = nowIso();
-      const info = fieldsRepo.update({
-        id: fieldId,
-        templateId,
-        name,
-        label,
-        type,
-        optionsJson: jsonStringifyOrNull(options),
-        updatedAt: ts,
-      });
-      if (info.changes === 0) throw new HttpError(404, "not found");
-    },
-    removeField: ({ templateId, fieldId }) => {
-      const info = fieldsRepo.remove(fieldId, templateId);
+    unbindField: ({ templateId, fieldId }) => {
+      const info = templateFieldLinksRepo.remove(templateId, fieldId);
       if (info.changes === 0) throw new HttpError(404, "not found");
     },
     listConfig: (templateId) => configsRepo.list(templateId),
+    getConfigJson: (templateId) => {
+      const items = configsRepo.list(templateId);
+      return {
+        version: 1,
+        layout: items.map((item) => ({
+          fieldCode: item.fieldDef.name,
+          span: item.config?.span ?? 12,
+          label: item.config?.label ?? item.fieldDef.label,
+          placeholder: item.config?.placeholder ?? null,
+          visible: item.config?.visible ?? true,
+          readonly: item.config?.readonly ?? false,
+        })),
+      };
+    },
     replaceConfig: ({ templateId, items }) => {
       const payload = items.map((item, index) => ({
         id: randomUUID(),
@@ -78,8 +76,8 @@ function createTemplatesService(templatesRepo, fieldsRepo, configsRepo) {
       }
     },
     replaceConfigFromJson: ({ templateId, configJson }) => {
-      const fields = fieldsRepo.list(templateId);
-      const fieldMap = new Map(fields.map((f) => [f.name, f]));
+      const pool = templateFieldLinksRepo.list(templateId);
+      const fieldMap = new Map(pool.map((f) => [f.name, f]));
       const fieldCodes = new Set(fieldMap.keys());
       const normalized = validateTemplateConfigJson(configJson, fieldCodes);
 

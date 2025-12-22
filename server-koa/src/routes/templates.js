@@ -8,9 +8,8 @@ function createTemplatesRouter(controller) {
   router.delete("/:id", controller.remove);
 
   router.get("/:id/fields", controller.listFields);
-  router.post("/:id/fields", controller.createField);
-  router.put("/:id/fields/:fieldId", controller.updateField);
-  router.delete("/:id/fields/:fieldId", controller.removeField);
+  router.post("/:id/fields", controller.bindFields);
+  router.delete("/:id/fields/:fieldId", controller.unbindField);
 
   router.get("/:id/config", controller.getConfig);
   router.put("/:id/config", controller.replaceConfig);
@@ -18,4 +17,3 @@ function createTemplatesRouter(controller) {
 }
 
 module.exports = { createTemplatesRouter };
-

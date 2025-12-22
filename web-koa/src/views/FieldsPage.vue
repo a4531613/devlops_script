@@ -5,8 +5,6 @@ import { api } from '../api/client'
 import OptionsEditor from '../components/OptionsEditor.vue'
 import { FIELD_TYPES, isOptionType } from '../lib/fieldTypes'
 
-const templates = ref([])
-const templateId = ref('')
 const loading = ref(false)
 const rows = ref([])
 const q = ref('')
@@ -20,26 +18,16 @@ const filtered = computed(() => {
   return rows.value.filter((r) => r.name.toLowerCase().includes(s) || r.label.toLowerCase().includes(s))
 })
 
-async function loadTemplates() {
-  templates.value = (await api.get('/templates')).data
-  if (!templateId.value && templates.value.length) templateId.value = templates.value[0].id
-}
-
 async function loadFields() {
   loading.value = true
   try {
-    if (!templateId.value) {
-      rows.value = []
-      return
-    }
-    rows.value = (await api.get(`/templates/${templateId.value}/fields`)).data
+    rows.value = (await api.get('/fields')).data
   } finally {
     loading.value = false
   }
 }
 
 function create() {
-  if (!templateId.value) return ElMessage.error('请先选择模板')
   form.value = { id: null, name: '', label: '', type: 'text', options: [] }
   dialogOpen.value = true
 }
@@ -56,7 +44,6 @@ function edit(row) {
 }
 
 async function save() {
-  if (!templateId.value) return ElMessage.error('请先选择模板')
   const payload = {
     name: form.value.name,
     label: form.value.label,
@@ -66,8 +53,8 @@ async function save() {
   if (!payload.name?.trim()) return ElMessage.error('请输入字段名称（name）')
   if (!payload.label?.trim()) return ElMessage.error('请输入字段显示名（label）')
 
-  if (form.value.id) await api.put(`/templates/${templateId.value}/fields/${form.value.id}`, payload)
-  else await api.post(`/templates/${templateId.value}/fields`, payload)
+  if (form.value.id) await api.put(`/fields/${form.value.id}`, payload)
+  else await api.post('/fields', payload)
 
   dialogOpen.value = false
   ElMessage.success('已保存')
@@ -76,28 +63,22 @@ async function save() {
 
 async function remove(row) {
   await ElMessageBox.confirm(`确认删除字段：${row.label}（${row.name}）？`, '提示', { type: 'warning' })
-  await api.delete(`/templates/${templateId.value}/fields/${row.id}`)
+  await api.delete(`/fields/${row.id}`)
   ElMessage.success('已删除')
   await loadFields()
 }
 
-onMounted(async () => {
-  await loadTemplates()
-  await loadFields()
-})
+onMounted(loadFields)
 </script>
 
 <template>
   <el-card>
     <div class="toolbar">
       <div class="toolbar-left">
-        <div class="card-title">字段管理</div>
-        <el-select v-model="templateId" placeholder="选择模板" style="width: 220px" @change="loadFields">
-          <el-option v-for="t in templates" :key="t.id" :label="t.name" :value="t.id" />
-        </el-select>
+        <div class="card-title">字段库</div>
         <el-input v-model="q" placeholder="搜索 name / label" style="width: 260px" clearable />
       </div>
-      <el-button type="primary" :disabled="!templateId" @click="create">新增字段</el-button>
+      <el-button type="primary" @click="create">新增字段</el-button>
     </div>
 
     <el-table v-loading="loading" :data="filtered" border>
@@ -143,4 +124,3 @@ onMounted(async () => {
     </template>
   </el-dialog>
 </template>
-

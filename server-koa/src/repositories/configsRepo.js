@@ -6,7 +6,7 @@ function createConfigsRepo(db) {
     SELECT
       c.id,
       c.template_id,
-      c.template_field_id,
+      c.field_id,
       c.sort_order,
       c.required,
       c.config_json,
@@ -15,7 +15,7 @@ function createConfigsRepo(db) {
       f.type AS field_type,
       f.options_json AS field_options_json
     FROM template_field_configs c
-    JOIN template_fields f ON f.id = c.template_field_id
+    JOIN fields f ON f.id = c.field_id
     WHERE c.template_id = ?
     ORDER BY c.sort_order ASC
     `
@@ -23,7 +23,7 @@ function createConfigsRepo(db) {
   const deleteStmt = db.prepare("DELETE FROM template_field_configs WHERE template_id = ?");
   const insertStmt = db.prepare(
     `
-    INSERT INTO template_field_configs (id, template_id, template_field_id, sort_order, required, config_json)
+    INSERT INTO template_field_configs (id, template_id, field_id, sort_order, required, config_json)
     VALUES (?, ?, ?, ?, ?, ?)
     `
   );
@@ -33,12 +33,12 @@ function createConfigsRepo(db) {
       listStmt.all(templateId).map((r) => ({
         id: r.id,
         templateId: r.template_id,
-        fieldId: r.template_field_id,
+        fieldId: r.field_id,
         sortOrder: r.sort_order,
         required: !!r.required,
         config: parseJsonOrNull(r.config_json) ?? {},
         fieldDef: {
-          id: r.template_field_id,
+          id: r.field_id,
           name: r.field_name,
           label: r.field_label,
           type: r.field_type,
@@ -66,4 +66,3 @@ function createConfigsRepo(db) {
 }
 
 module.exports = { createConfigsRepo };
-

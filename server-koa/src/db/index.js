@@ -20,7 +20,29 @@ function migrate(db) {
   const schemaPath = path.join(__dirname, "schema.sql");
   const schemaSql = fs.readFileSync(schemaPath, "utf-8");
   db.exec(schemaSql);
+
+  // Handle legacy schemas by recreating changed tables.
+  const tableInfo = (tableName) => db.prepare(`PRAGMA table_info(${tableName})`).all();
+  const hasColumn = (tableName, columnName) => {
+    try {
+      return tableInfo(tableName).some((c) => c.name === columnName);
+    } catch {
+      return false;
+    }
+  };
+
+  const legacyConfig = hasColumn("template_field_configs", "template_field_id");
+  const legacyCaseValues = hasColumn("case_values", "template_field_id");
+  const legacyTemplateFields = hasColumn("template_fields", "template_id");
+
+  if (legacyConfig || legacyCaseValues || legacyTemplateFields) {
+    db.pragma("foreign_keys = OFF");
+    if (legacyConfig) db.exec("DROP TABLE IF EXISTS template_field_configs;");
+    if (legacyCaseValues) db.exec("DROP TABLE IF EXISTS case_values;");
+    if (legacyTemplateFields) db.exec("DROP TABLE IF EXISTS template_fields;");
+    db.pragma("foreign_keys = ON");
+    db.exec(schemaSql);
+  }
 }
 
 module.exports = { openDb, migrate };
-

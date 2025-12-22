@@ -3,10 +3,12 @@ import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import { api } from '../api/client'
 import DynamicForm from '../components/DynamicForm.vue'
+import { mergeConfigWithFieldDefs } from '../lib/templateConfig'
 
 const templates = ref([])
 const templateId = ref('')
-const templateConfigs = ref([])
+const templateConfig = ref(null)
+const poolFields = ref([])
 const formRef = ref()
 
 const saving = ref(false)
@@ -16,17 +18,10 @@ const form = reactive({
   values: {},
 })
 
-const schema = computed(() =>
-  templateConfigs.value.map((c) => ({
-    id: c.fieldId,
-    label: c.fieldDef.label,
-    name: c.fieldDef.name,
-    type: c.fieldDef.type,
-    options: c.config?.options ?? c.fieldDef.options,
-    required: !!c.required,
-    config: c.config ?? {},
-  }))
-)
+const schema = computed(() => {
+  const merged = mergeConfigWithFieldDefs(templateConfig.value, poolFields.value)
+  return merged.fields
+})
 
 async function loadTemplates() {
   templates.value = (await api.get('/templates')).data
@@ -34,18 +29,24 @@ async function loadTemplates() {
 
 async function loadConfig() {
   if (!templateId.value) {
-    templateConfigs.value = []
+    templateConfig.value = null
+    poolFields.value = []
     form.title = ''
     form.values = {}
     return
   }
-  templateConfigs.value = (await api.get(`/templates/${templateId.value}/config`)).data
+  const [configRes, poolRes] = await Promise.all([
+    api.get(`/templates/${templateId.value}/config`),
+    api.get(`/templates/${templateId.value}/fields`),
+  ])
+  templateConfig.value = configRes.data
+  poolFields.value = poolRes.data
   form.values = {}
-  templateConfigs.value.forEach((c) => {
-    const t = c.fieldDef?.type
-    if (t === 'checkbox' || t === 'multiselect') form.values[c.fieldId] = []
-    else if (t === 'switch') form.values[c.fieldId] = false
-    else form.values[c.fieldId] = null
+  schema.value.forEach((c) => {
+    const t = c.type
+    if (t === 'checkbox' || t === 'multiselect') form.values[c.id] = []
+    else if (t === 'switch') form.values[c.id] = false
+    else form.values[c.id] = null
   })
 }
 

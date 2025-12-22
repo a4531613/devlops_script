@@ -4,6 +4,7 @@ import DashboardPage from '../views/DashboardPage.vue'
 import RolesPage from '../views/RolesPage.vue'
 import TemplatesPage from '../views/TemplatesPage.vue'
 import FieldsPage from '../views/FieldsPage.vue'
+import TemplateFieldPool from '../views/TemplateFieldPool.vue'
 import TemplateConfigPage from '../views/TemplateConfigPage.vue'
 import CaseNewPage from '../views/CaseNewPage.vue'
 import CaseSearchPage from '../views/CaseSearchPage.vue'
@@ -14,10 +15,16 @@ const router = createRouter({
     { path: '/', name: 'dashboard', component: DashboardPage, meta: { title: '概览' } },
     { path: '/roles', name: 'roles', component: RolesPage, meta: { title: '角色管理' } },
     { path: '/templates', name: 'templates', component: TemplatesPage, meta: { title: '模板管理' } },
-    { path: '/fields', name: 'fields', component: FieldsPage, meta: { title: '字段管理' } },
+    { path: '/fields', name: 'fields', component: FieldsPage, meta: { title: '字段库' } },
     {
-      path: '/templates/:id/config',
-      name: 'templateConfig',
+      path: '/templates/:id/field-pool',
+      name: 'templateFieldPool',
+      component: TemplateFieldPool,
+      meta: { title: '字段池管理' },
+    },
+    {
+      path: '/templates/:id/designer',
+      name: 'templateDesigner',
       component: TemplateConfigPage,
       meta: { title: '模板配置' },
     },
@@ -27,4 +34,3 @@ const router = createRouter({
 })
 
 export default router
-

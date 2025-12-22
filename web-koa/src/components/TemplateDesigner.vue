@@ -7,6 +7,9 @@ import { ElMessage } from 'element-plus'
 import { api } from '../api/client'
 import DynamicForm from './DynamicForm.vue'
 import { normalizeOptions } from '../lib/fieldTypes'
+import { mergeConfigWithFieldDefs, sanitizeConfig } from '../lib/templateConfig'
+import { useTemplateFields } from '../lib/useTemplateFields'
+import { useTemplateConfig } from '../lib/useTemplateConfig'
 
 const props = defineProps({
   templateId: { type: String, default: '' },
@@ -22,7 +25,6 @@ const fields = ref([])
 const selected = ref([])
 const q = ref('')
 const savedSnapshot = ref([])
-const savedConfig = ref(null)
 
 const previewOpen = ref(false)
 const previewReadonly = ref(false)
@@ -30,6 +32,9 @@ const previewUseSaved = ref(false)
 const previewValues = ref({})
 const previewOutput = ref('')
 const previewFormRef = ref()
+
+const { fields: poolFields, load: loadPool } = useTemplateFields(resolvedTemplateId)
+const { config: savedConfigRef, load: loadConfig, save: saveConfig } = useTemplateConfig(resolvedTemplateId)
 
 const available = computed(() => {
   const chosen = new Set(selected.value.map((s) => s.fieldId))
@@ -53,42 +58,9 @@ function buildConfigFromSelected(items) {
   }
 }
 
-function mergeConfigWithFieldDefs(config, fieldDefs) {
-  const map = new Map(fieldDefs.map((f) => [f.name, f]))
-  const invalidCodes = []
-  const fields = []
-  const layout = Array.isArray(config?.layout) ? config.layout : []
-
-  layout.forEach((item) => {
-    const fieldDef = map.get(item.fieldCode)
-    if (!fieldDef) {
-      invalidCodes.push(item.fieldCode)
-      return
-    }
-    fields.push({
-      id: fieldDef.id,
-      label: item.label || fieldDef.label,
-      name: fieldDef.name,
-      type: fieldDef.type,
-      options: fieldDef.options,
-      required: false,
-      config: {
-        label: item.label || null,
-        placeholder: item.placeholder || null,
-        span: item.span ?? 12,
-        visible: item.visible ?? true,
-        readonly: item.readonly ?? false,
-      },
-    })
-  })
-
-  return { fields, invalidCodes }
-}
-
 const currentConfig = computed(() => buildConfigFromSelected(selected.value))
 const templateConfigJson = computed(() => JSON.stringify(currentConfig.value, null, 2))
-
-const previewConfig = computed(() => (previewUseSaved.value ? savedConfig.value : currentConfig.value))
+const previewConfig = computed(() => (previewUseSaved.value ? savedConfigRef.value : currentConfig.value))
 const previewMerged = computed(() => mergeConfigWithFieldDefs(previewConfig.value, fields.value))
 const previewSchema = computed(() => previewMerged.value.fields)
 const previewInvalid = computed(() => previewMerged.value.invalidCodes)
@@ -174,7 +146,7 @@ async function copyPreviewJson() {
 }
 
 function openPreview() {
-  if (previewUseSaved.value && !savedConfig.value?.layout) {
+  if (previewUseSaved.value && !savedConfigRef.value?.layout) {
     ElMessage.warning('暂无已保存配置')
     return
   }
@@ -195,11 +167,8 @@ function resetToSaved() {
 function cleanInvalidFields() {
   const invalidCodes = previewInvalid.value
   if (!invalidCodes.length) return
-  if (previewUseSaved.value && savedConfig.value?.layout) {
-    savedConfig.value = {
-      ...savedConfig.value,
-      layout: savedConfig.value.layout.filter((i) => !invalidCodes.includes(i.fieldCode)),
-    }
+  if (previewUseSaved.value && savedConfigRef.value?.layout) {
+    savedConfigRef.value = sanitizeConfig(savedConfigRef.value, fields.value)
   } else {
     selected.value = selected.value.filter((item) => !invalidCodes.includes(item.fieldDef.name))
   }
@@ -233,26 +202,29 @@ async function load() {
   if (!resolvedTemplateId.value) return
   loading.value = true
   try {
-    const [tplRes, fieldRes, configRes] = await Promise.all([
-      api.get('/templates'),
-      api.get(`/templates/${resolvedTemplateId.value}/fields`),
-      api.get(`/templates/${resolvedTemplateId.value}/config`),
-    ])
+    const [tplRes] = await Promise.all([api.get('/templates'), loadPool(), loadConfig()])
     template.value = tplRes.data.find((t) => t.id === resolvedTemplateId.value) || null
-    fields.value = fieldRes.data
-    selected.value = (configRes.data ?? []).map((c) => ({
-      fieldId: c.fieldId,
-      fieldDef: c.fieldDef,
-      ui: {
-        label: c.config?.label ?? c.fieldDef?.label ?? '',
-        placeholder: c.config?.placeholder ?? '',
-        span: c.config?.span ?? 12,
-        visible: c.config?.visible ?? true,
-        readonly: c.config?.readonly ?? false,
-      },
-    }))
+    fields.value = poolFields.value
+
+    const config = savedConfigRef.value
+    if (config?.layout?.length) {
+      const merged = mergeConfigWithFieldDefs(config, fields.value)
+      selected.value = merged.fields.map((f) => ({
+        fieldId: f.id,
+        fieldDef: fields.value.find((x) => x.id === f.id),
+        ui: {
+          label: f.config?.label ?? f.label ?? '',
+          placeholder: f.config?.placeholder ?? '',
+          span: f.config?.span ?? 12,
+          visible: f.config?.visible ?? true,
+          readonly: f.config?.readonly ?? false,
+        },
+      }))
+    } else {
+      selected.value = []
+    }
+
     savedSnapshot.value = JSON.parse(JSON.stringify(selected.value))
-    savedConfig.value = buildConfigFromSelected(selected.value)
   } finally {
     loading.value = false
   }
@@ -261,22 +233,28 @@ async function load() {
 async function save() {
   if (!resolvedTemplateId.value) return ElMessage.error('缺少模板 ID')
   const payload = buildConfigFromSelected(selected.value)
-  await api.put(`/templates/${resolvedTemplateId.value}/config`, payload)
+  await saveConfig(payload)
   ElMessage.success('已保存模板配置')
   savedSnapshot.value = JSON.parse(JSON.stringify(selected.value))
-  savedConfig.value = payload
 }
 
 onMounted(load)
 watch(resolvedTemplateId, load)
 watch(selected, syncPreviewValues, { deep: true })
 watch(previewUseSaved, syncPreviewValues)
+watch(
+  poolFields,
+  (val) => {
+    fields.value = val
+  },
+  { deep: true }
+)
 </script>
 
 <template>
   <div v-loading="loading">
     <div class="toolbar">
-      <div class="card-title">{{ template?.name || '模板' }} - 配置设计器</div>
+      <div class="card-title">{{ template?.name || '模板' }} - 模板配置</div>
       <div class="toolbar-left">
         <el-button type="primary" :disabled="!selected.length" @click="save">保存配置</el-button>
         <el-button @click="openPreview">一键预览</el-button>
@@ -285,11 +263,26 @@ watch(previewUseSaved, syncPreviewValues)
       </div>
     </div>
 
+    <el-breadcrumb separator="/">
+      <el-breadcrumb-item @click="router.push('/templates')">模板管理</el-breadcrumb-item>
+      <el-breadcrumb-item>{{ template?.name || '当前模板' }}</el-breadcrumb-item>
+      <el-breadcrumb-item>模板配置</el-breadcrumb-item>
+    </el-breadcrumb>
+
+    <el-alert
+      v-if="!fields.length"
+      type="warning"
+      show-icon
+      :closable="false"
+      style="margin: 12px 0"
+      title="字段池为空，请先维护字段池"
+    />
+
     <el-row :gutter="12">
       <el-col :span="9">
         <el-card>
           <div class="toolbar">
-            <div class="card-title">字段池</div>
+            <div class="card-title">字段池（只读）</div>
             <el-input v-model="q" placeholder="搜索字段" style="width: 220px" clearable />
           </div>
 
@@ -366,11 +359,6 @@ watch(previewUseSaved, syncPreviewValues)
         </el-card>
 
         <el-card style="margin-top: 12px">
-          <div class="card-title" style="margin-bottom: 8px">表单预览</div>
-          <DynamicForm v-model="previewValues" :schema="previewSchema" />
-        </el-card>
-
-        <el-card style="margin-top: 12px">
           <div class="card-title" style="margin-bottom: 8px">template_config_json</div>
           <el-input type="textarea" :rows="10" :model-value="templateConfigJson" readonly />
         </el-card>
@@ -380,9 +368,7 @@ watch(previewUseSaved, syncPreviewValues)
     <el-drawer v-model="previewOpen" size="680px" title="预览表单">
       <div v-if="previewInvalid.length" style="margin-bottom: 12px">
         <el-alert type="error" :closable="false" show-icon>
-          <template #title>
-            发现无效字段：{{ previewInvalid.join('、') }}
-          </template>
+          <template #title>发现无效字段：{{ previewInvalid.join('、') }}</template>
         </el-alert>
         <div style="margin-top: 8px">
           <el-button type="danger" @click="cleanInvalidFields">清理无效字段</el-button>
@@ -392,11 +378,7 @@ watch(previewUseSaved, syncPreviewValues)
       <div class="toolbar" style="margin-bottom: 8px">
         <div class="toolbar-left">
           <el-switch v-model="previewReadonly" active-text="只读预览" />
-          <el-switch
-            v-model="previewUseSaved"
-            active-text="使用已保存配置"
-            :disabled="!savedConfig?.layout"
-          />
+          <el-switch v-model="previewUseSaved" active-text="使用已保存配置" :disabled="!savedConfigRef?.layout" />
         </div>
         <div class="toolbar-left">
           <el-button @click="fillMock">填充示例数据</el-button>

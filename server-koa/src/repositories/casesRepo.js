@@ -14,7 +14,7 @@ function createCasesRepo(db) {
     "INSERT INTO cases (id, template_id, title, created_at) VALUES (?, ?, ?, ?)"
   );
   const insertValueStmt = db.prepare(
-    "INSERT INTO case_values (id, case_id, template_field_id, value_json) VALUES (?, ?, ?, ?)"
+    "INSERT INTO case_values (id, case_id, field_id, value_json) VALUES (?, ?, ?, ?)"
   );
   const getCaseStmt = db.prepare(
     `
@@ -24,9 +24,7 @@ function createCasesRepo(db) {
     WHERE c.id = ?
     `
   );
-  const listValuesStmt = db.prepare(
-    "SELECT template_field_id, value_json FROM case_values WHERE case_id = ?"
-  );
+  const listValuesStmt = db.prepare("SELECT field_id, value_json FROM case_values WHERE case_id = ?");
 
   return {
     list: (filters) => {
@@ -79,7 +77,7 @@ function createCasesRepo(db) {
       const values = listValuesStmt
         .all(id)
         .reduce((acc, r) => {
-          acc[r.template_field_id] = parseJsonOrNull(r.value_json);
+          acc[r.field_id] = parseJsonOrNull(r.value_json);
           return acc;
         }, {});
       return {
@@ -95,4 +93,3 @@ function createCasesRepo(db) {
 }
 
 module.exports = { createCasesRepo };
-

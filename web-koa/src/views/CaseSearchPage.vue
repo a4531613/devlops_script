@@ -3,6 +3,7 @@ import { computed, onMounted, ref } from 'vue'
 import dayjs from 'dayjs'
 import { api } from '../api/client'
 import DynamicForm from '../components/DynamicForm.vue'
+import { mergeConfigWithFieldDefs } from '../lib/templateConfig'
 
 const templates = ref([])
 const templateId = ref('')
@@ -15,21 +16,15 @@ const rows = ref([])
 const drawerOpen = ref(false)
 const detailLoading = ref(false)
 const detail = ref(null)
-const detailConfig = ref([])
+const detailConfig = ref(null)
+const detailPool = ref([])
 
 const templateMap = computed(() => new Map(templates.value.map((t) => [t.id, t.name])))
 
-const detailSchema = computed(() =>
-  detailConfig.value.map((c) => ({
-    id: c.fieldId,
-    label: c.fieldDef.label,
-    name: c.fieldDef.name,
-    type: c.fieldDef.type,
-    options: c.config?.options ?? c.fieldDef.options,
-    required: !!c.required,
-    config: c.config ?? {},
-  }))
-)
+const detailSchema = computed(() => {
+  const merged = mergeConfigWithFieldDefs(detailConfig.value, detailPool.value)
+  return merged.fields
+})
 
 async function loadTemplates() {
   templates.value = (await api.get('/templates')).data
@@ -55,11 +50,17 @@ async function openDetail(row) {
   drawerOpen.value = true
   detailLoading.value = true
   detail.value = null
-  detailConfig.value = []
+  detailConfig.value = null
+  detailPool.value = []
   try {
     const d = (await api.get(`/cases/${row.id}`)).data
     detail.value = d
-    detailConfig.value = (await api.get(`/templates/${d.templateId}/config`)).data
+    const [configRes, poolRes] = await Promise.all([
+      api.get(`/templates/${d.templateId}/config`),
+      api.get(`/templates/${d.templateId}/fields`),
+    ])
+    detailConfig.value = configRes.data
+    detailPool.value = poolRes.data
   } finally {
     detailLoading.value = false
   }
