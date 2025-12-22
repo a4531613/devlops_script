@@ -123,7 +123,7 @@ onMounted(async () => {
         </el-descriptions>
 
         <div class="card-title" style="margin-top: 12px">字段值</div>
-        <DynamicForm :schema="detailSchema" v-model="detail.values" readonly />
+        <DynamicForm :fields="detailSchema" v-model="detail.values" readonly />
       </template>
       <template v-else>
         <div class="muted">-</div>
@@ -131,4 +131,3 @@ onMounted(async () => {
     </div>
   </el-drawer>
 </template>
-

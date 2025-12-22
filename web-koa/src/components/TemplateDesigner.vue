@@ -1,16 +1,19 @@
 <script setup>
 import { computed, onMounted, ref, watch } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import Draggable from 'vuedraggable'
 import { ElMessage } from 'element-plus'
 
 import { api } from '../api/client'
+import DynamicForm from './DynamicForm.vue'
+import { normalizeOptions } from '../lib/fieldTypes'
 
 const props = defineProps({
   templateId: { type: String, default: '' },
 })
 
 const route = useRoute()
+const router = useRouter()
 const resolvedTemplateId = computed(() => props.templateId || route.params.id)
 
 const loading = ref(false)
@@ -18,6 +21,15 @@ const template = ref(null)
 const fields = ref([])
 const selected = ref([])
 const q = ref('')
+const savedSnapshot = ref([])
+const savedConfig = ref(null)
+
+const previewOpen = ref(false)
+const previewReadonly = ref(false)
+const previewUseSaved = ref(false)
+const previewValues = ref({})
+const previewOutput = ref('')
+const previewFormRef = ref()
 
 const available = computed(() => {
   const chosen = new Set(selected.value.map((s) => s.fieldId))
@@ -27,23 +39,59 @@ const available = computed(() => {
   return base.filter((f) => f.name.toLowerCase().includes(s) || f.label.toLowerCase().includes(s))
 })
 
-const templateConfigJson = computed(() =>
-  JSON.stringify(
-    selected.value.map((item, index) => ({
-      fieldId: item.fieldId,
-      sortOrder: index,
-      ui: {
-        label: item.ui.label || null,
-        placeholder: item.ui.placeholder || null,
-        span: item.ui.span,
-        visible: item.ui.visible,
-        readonly: item.ui.readonly,
-      },
+function buildConfigFromSelected(items) {
+  return {
+    version: 1,
+    layout: items.map((item) => ({
+      fieldCode: item.fieldDef.name,
+      span: item.ui.span,
+      label: item.ui.label || null,
+      placeholder: item.ui.placeholder || null,
+      visible: item.ui.visible,
+      readonly: item.ui.readonly,
     })),
-    null,
-    2
-  )
-)
+  }
+}
+
+function mergeConfigWithFieldDefs(config, fieldDefs) {
+  const map = new Map(fieldDefs.map((f) => [f.name, f]))
+  const invalidCodes = []
+  const fields = []
+  const layout = Array.isArray(config?.layout) ? config.layout : []
+
+  layout.forEach((item) => {
+    const fieldDef = map.get(item.fieldCode)
+    if (!fieldDef) {
+      invalidCodes.push(item.fieldCode)
+      return
+    }
+    fields.push({
+      id: fieldDef.id,
+      label: item.label || fieldDef.label,
+      name: fieldDef.name,
+      type: fieldDef.type,
+      options: fieldDef.options,
+      required: false,
+      config: {
+        label: item.label || null,
+        placeholder: item.placeholder || null,
+        span: item.span ?? 12,
+        visible: item.visible ?? true,
+        readonly: item.readonly ?? false,
+      },
+    })
+  })
+
+  return { fields, invalidCodes }
+}
+
+const currentConfig = computed(() => buildConfigFromSelected(selected.value))
+const templateConfigJson = computed(() => JSON.stringify(currentConfig.value, null, 2))
+
+const previewConfig = computed(() => (previewUseSaved.value ? savedConfig.value : currentConfig.value))
+const previewMerged = computed(() => mergeConfigWithFieldDefs(previewConfig.value, fields.value))
+const previewSchema = computed(() => previewMerged.value.fields)
+const previewInvalid = computed(() => previewMerged.value.invalidCodes)
 
 function cloneField(field) {
   return {
@@ -57,6 +105,109 @@ function cloneField(field) {
       readonly: false,
     },
   }
+}
+
+function defaultValueFor(type) {
+  if (type === 'checkbox') return []
+  if (type === 'multiselect') return []
+  if (type === 'switch') return false
+  return null
+}
+
+function syncPreviewValues() {
+  const next = { ...previewValues.value }
+  const keys = new Set(previewSchema.value.map((f) => f.id))
+  Object.keys(next).forEach((k) => {
+    if (!keys.has(k)) delete next[k]
+  })
+  previewSchema.value.forEach((f) => {
+    if (!(f.id in next)) next[f.id] = defaultValueFor(f.type)
+  })
+  previewValues.value = next
+}
+
+function mockValueFor(field) {
+  const type = field.type
+  if (type === 'checkbox') {
+    const opts = normalizeOptions(field.options)
+    return opts.length ? [opts[0].value] : []
+  }
+  if (type === 'multiselect') {
+    const opts = normalizeOptions(field.options)
+    return opts.length ? [opts[0].value] : []
+  }
+  if (type === 'select' || type === 'radio') {
+    const opts = normalizeOptions(field.options)
+    return opts.length ? opts[0].value : null
+  }
+  if (type === 'number') return 1
+  if (type === 'date') return new Date().toISOString().slice(0, 10)
+  if (type === 'datetime') return new Date().toISOString()
+  if (type === 'switch') return true
+  if (type === 'divider' || type === 'section') return null
+  return `${field.label || field.name || '字段'}示例`
+}
+
+function fillMock() {
+  const next = { ...previewValues.value }
+  previewSchema.value.forEach((f) => {
+    next[f.id] = mockValueFor(f)
+  })
+  previewValues.value = next
+}
+
+async function submitPreview() {
+  previewOutput.value = ''
+  const ok = await previewFormRef.value?.validate?.()
+  if (!ok) return
+  previewOutput.value = JSON.stringify(previewValues.value, null, 2)
+}
+
+async function copyPreviewJson() {
+  const text = JSON.stringify(previewValues.value, null, 2)
+  if (navigator?.clipboard?.writeText) {
+    await navigator.clipboard.writeText(text)
+    ElMessage.success('已复制 JSON')
+    return
+  }
+  ElMessage.warning('当前环境不支持剪贴板')
+}
+
+function openPreview() {
+  if (previewUseSaved.value && !savedConfig.value?.layout) {
+    ElMessage.warning('暂无已保存配置')
+    return
+  }
+  if (!selected.value.length && !previewUseSaved.value) {
+    ElMessage.warning('未选择任何字段')
+    return
+  }
+  previewOutput.value = ''
+  previewOpen.value = true
+  syncPreviewValues()
+}
+
+function resetToSaved() {
+  selected.value = JSON.parse(JSON.stringify(savedSnapshot.value))
+  ElMessage.success('已重置为已保存配置')
+}
+
+function cleanInvalidFields() {
+  const invalidCodes = previewInvalid.value
+  if (!invalidCodes.length) return
+  if (previewUseSaved.value && savedConfig.value?.layout) {
+    savedConfig.value = {
+      ...savedConfig.value,
+      layout: savedConfig.value.layout.filter((i) => !invalidCodes.includes(i.fieldCode)),
+    }
+  } else {
+    selected.value = selected.value.filter((item) => !invalidCodes.includes(item.fieldDef.name))
+  }
+  ElMessage.success('已清理无效字段')
+}
+
+function goBack() {
+  router.back()
 }
 
 function itemStyle(span) {
@@ -100,6 +251,8 @@ async function load() {
         readonly: c.config?.readonly ?? false,
       },
     }))
+    savedSnapshot.value = JSON.parse(JSON.stringify(selected.value))
+    savedConfig.value = buildConfigFromSelected(selected.value)
   } finally {
     loading.value = false
   }
@@ -107,31 +260,29 @@ async function load() {
 
 async function save() {
   if (!resolvedTemplateId.value) return ElMessage.error('缺少模板 ID')
-  const payload = selected.value.map((item, index) => ({
-    fieldId: item.fieldId,
-    sortOrder: index,
-    required: false,
-    config: {
-      label: item.ui.label || null,
-      placeholder: item.ui.placeholder || null,
-      span: item.ui.span,
-      visible: item.ui.visible,
-      readonly: item.ui.readonly,
-    },
-  }))
+  const payload = buildConfigFromSelected(selected.value)
   await api.put(`/templates/${resolvedTemplateId.value}/config`, payload)
   ElMessage.success('已保存模板配置')
+  savedSnapshot.value = JSON.parse(JSON.stringify(selected.value))
+  savedConfig.value = payload
 }
 
 onMounted(load)
 watch(resolvedTemplateId, load)
+watch(selected, syncPreviewValues, { deep: true })
+watch(previewUseSaved, syncPreviewValues)
 </script>
 
 <template>
   <div v-loading="loading">
     <div class="toolbar">
       <div class="card-title">{{ template?.name || '模板' }} - 配置设计器</div>
-      <el-button type="primary" :disabled="!selected.length" @click="save">保存配置</el-button>
+      <div class="toolbar-left">
+        <el-button type="primary" :disabled="!selected.length" @click="save">保存配置</el-button>
+        <el-button @click="openPreview">一键预览</el-button>
+        <el-button :disabled="!savedSnapshot.length" @click="resetToSaved">重置</el-button>
+        <el-button @click="goBack">返回</el-button>
+      </div>
     </div>
 
     <el-row :gutter="12">
@@ -215,11 +366,61 @@ watch(resolvedTemplateId, load)
         </el-card>
 
         <el-card style="margin-top: 12px">
+          <div class="card-title" style="margin-bottom: 8px">表单预览</div>
+          <DynamicForm v-model="previewValues" :schema="previewSchema" />
+        </el-card>
+
+        <el-card style="margin-top: 12px">
           <div class="card-title" style="margin-bottom: 8px">template_config_json</div>
           <el-input type="textarea" :rows="10" :model-value="templateConfigJson" readonly />
         </el-card>
       </el-col>
     </el-row>
+
+    <el-drawer v-model="previewOpen" size="680px" title="预览表单">
+      <div v-if="previewInvalid.length" style="margin-bottom: 12px">
+        <el-alert type="error" :closable="false" show-icon>
+          <template #title>
+            发现无效字段：{{ previewInvalid.join('、') }}
+          </template>
+        </el-alert>
+        <div style="margin-top: 8px">
+          <el-button type="danger" @click="cleanInvalidFields">清理无效字段</el-button>
+        </div>
+      </div>
+
+      <div class="toolbar" style="margin-bottom: 8px">
+        <div class="toolbar-left">
+          <el-switch v-model="previewReadonly" active-text="只读预览" />
+          <el-switch
+            v-model="previewUseSaved"
+            active-text="使用已保存配置"
+            :disabled="!savedConfig?.layout"
+          />
+        </div>
+        <div class="toolbar-left">
+          <el-button @click="fillMock">填充示例数据</el-button>
+          <el-button @click="submitPreview">提交预览</el-button>
+          <el-button @click="copyPreviewJson">复制 JSON</el-button>
+        </div>
+      </div>
+
+      <template v-if="previewSchema.length">
+        <DynamicForm
+          ref="previewFormRef"
+          v-model="previewValues"
+          :fields="previewSchema"
+          :mode="previewReadonly ? 'readonly' : 'edit'"
+        />
+      </template>
+      <template v-else>
+        <el-empty description="未选择任何字段或字段定义缺失" />
+      </template>
+
+      <el-card v-if="previewOutput" style="margin-top: 12px">
+        <div class="card-title" style="margin-bottom: 8px">预览输出 JSON</div>
+        <el-input type="textarea" :rows="8" :model-value="previewOutput" readonly />
+      </el-card>
+    </el-drawer>
   </div>
 </template>
-

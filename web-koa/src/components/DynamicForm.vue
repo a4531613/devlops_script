@@ -3,12 +3,14 @@ import { computed, reactive, ref, watch } from 'vue'
 import { displayValue, normalizeOptions } from '../lib/fieldTypes'
 
 const props = defineProps({
+  fields: { type: Array, default: () => [] },
   schema: { type: Array, default: () => [] },
   modelValue: { type: Object, default: () => ({}) },
   readonly: { type: Boolean, default: false },
+  mode: { type: String, default: 'edit' },
 })
 
-const emit = defineEmits(['update:modelValue', 'submit'])
+const emit = defineEmits(['update:modelValue', 'submit', 'validate'])
 const formRef = ref()
 
 const FIELD_RENDERERS = {
@@ -102,9 +104,12 @@ function isVisible(field) {
   return field.config?.visible !== false
 }
 
+const readonlyMode = computed(() => props.readonly || props.mode === 'readonly')
+const fieldList = computed(() => (props.fields.length ? props.fields : props.schema))
+
 const rules = computed(() => {
   const map = {}
-  props.schema.forEach((f) => {
+  fieldList.value.forEach((f) => {
     const renderer = getRenderer(f)
     if (renderer.valueType === 'none') return
     const label = labelOf(f)
@@ -173,8 +178,10 @@ function placeholderOf(field) {
 }
 
 async function validate() {
-  if (props.readonly) return true
-  return formRef.value?.validate?.()
+  if (readonlyMode.value) return true
+  const ok = await formRef.value?.validate?.()
+  emit('validate', ok)
+  return ok
 }
 
 async function submit() {
@@ -187,13 +194,13 @@ defineExpose({ validate, submit })
 
 <template>
   <el-form ref="formRef" label-width="110px" :model="formModel" :rules="rules">
-    <template v-for="field in schema" :key="field.id">
+    <template v-for="field in fieldList" :key="field.id">
       <template v-if="!isVisible(field)"></template>
       <template v-else-if="getRenderer(field).component === 'el-divider'">
         <el-divider>{{ labelOf(field) }}</el-divider>
       </template>
       <el-form-item v-else :label="labelOf(field)" :prop="field.id" :required="!!field.required">
-        <template v-if="readonly || field.config?.readonly">
+        <template v-if="readonlyMode || field.config?.readonly">
           <span>{{ displayValue(formModel[field.id]) }}</span>
         </template>
         <template v-else>
@@ -202,7 +209,7 @@ defineExpose({ validate, submit })
             v-bind="getRenderer(field).props || {}"
             :model-value="formModel[field.id]"
             :placeholder="placeholderOf(field)"
-            :disabled="readonly || field.config?.readonly"
+            :disabled="readonlyMode || field.config?.readonly"
             style="width: 100%"
             @update:model-value="(v) => update(field.id, v)"
           >

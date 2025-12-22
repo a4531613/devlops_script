@@ -88,11 +88,10 @@ onMounted(loadTemplates)
       </el-form-item>
     </el-form>
 
-    <DynamicForm ref="formRef" v-model="form.values" :schema="schema" />
+    <DynamicForm ref="formRef" v-model="form.values" :fields="schema" />
 
     <div style="display: flex; justify-content: flex-end">
       <el-button type="primary" :loading="saving" @click="submit">提交</el-button>
     </div>
   </el-card>
 </template>
-
