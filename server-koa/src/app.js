@@ -39,7 +39,7 @@ function createApp() {
 
   const rolesService = createRolesService(rolesRepo);
   const templatesService = createTemplatesService(templatesRepo, templateFieldsRepo, configsRepo);
-  const casesService = createCasesService(casesRepo);
+  const casesService = createCasesService(casesRepo, templateFieldsRepo, configsRepo);
 
   const rolesController = createRolesController(rolesService);
   const templatesController = createTemplatesController(templatesService);

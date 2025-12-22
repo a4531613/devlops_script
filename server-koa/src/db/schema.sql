@@ -47,9 +47,14 @@ CREATE TABLE IF NOT EXISTS template_config (
 
 CREATE TABLE IF NOT EXISTS cases (
   id TEXT PRIMARY KEY,
+  case_no TEXT NOT NULL,
   template_id TEXT NOT NULL,
   title TEXT NOT NULL,
+  status TEXT,
   created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  is_deleted INTEGER NOT NULL DEFAULT 0,
+  deleted_at TEXT,
   FOREIGN KEY(template_id) REFERENCES templates(id) ON DELETE RESTRICT
 );
 

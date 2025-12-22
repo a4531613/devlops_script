@@ -3,7 +3,7 @@ const { parseJsonOrNull } = require("../utils/json");
 function createCasesRepo(db) {
   const listStmt = db.prepare(
     `
-    SELECT c.id, c.template_id, c.title, c.created_at, t.name AS template_name
+    SELECT c.id, c.case_no, c.template_id, c.title, c.status, c.created_at, c.updated_at, t.name AS template_name
     FROM cases c
     JOIN templates t ON t.id = c.template_id
     WHERE 1 = 1
@@ -11,27 +11,31 @@ function createCasesRepo(db) {
   );
 
   const insertCaseStmt = db.prepare(
-    "INSERT INTO cases (id, template_id, title, created_at) VALUES (?, ?, ?, ?)"
+    `
+    INSERT INTO cases (
+      id, case_no, template_id, title, status, created_at, updated_at, is_deleted
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, 0)
+    `
   );
   const insertDataStmt = db.prepare(
     "INSERT INTO case_data (id, case_id, data_json) VALUES (?, ?, ?)"
   );
   const getCaseStmt = db.prepare(
     `
-    SELECT c.id, c.template_id, c.title, c.created_at, t.name AS template_name
+    SELECT c.id, c.case_no, c.template_id, c.title, c.status, c.created_at, c.updated_at, t.name AS template_name
     FROM cases c
     JOIN templates t ON t.id = c.template_id
-    WHERE c.id = ?
+    WHERE c.id = ? AND c.is_deleted = 0
     `
   );
   const getDataStmt = db.prepare("SELECT data_json FROM case_data WHERE case_id = ?");
 
   const getDetailStmt = db.prepare(
     `
-    SELECT c.id, c.template_id, c.title, c.created_at, t.name AS template_name
+    SELECT c.id, c.case_no, c.template_id, c.title, c.status, c.created_at, c.updated_at, t.name AS template_name
     FROM cases c
     JOIN templates t ON t.id = c.template_id
-    WHERE c.id = ?
+    WHERE c.id = ? AND c.is_deleted = 0
     `
   );
   const getConfigStmt = db.prepare("SELECT config_json FROM template_config WHERE template_id = ?");
@@ -60,10 +64,35 @@ function createCasesRepo(db) {
     `
   );
 
+  const updateCaseStmt = db.prepare(
+    `
+    UPDATE cases
+    SET title = ?, status = ?, updated_at = ?
+    WHERE id = ? AND is_deleted = 0
+    `
+  );
+  const upsertDataStmt = db.prepare(
+    `
+    INSERT INTO case_data (id, case_id, data_json)
+    VALUES (?, ?, ?)
+    ON CONFLICT(case_id) DO UPDATE SET data_json = excluded.data_json
+    `
+  );
+  const softDeleteStmt = db.prepare(
+    `
+    UPDATE cases
+    SET is_deleted = 1, deleted_at = ?, updated_at = ?
+    WHERE id = ? AND is_deleted = 0
+    `
+  );
+
   return {
     list: (filters) => {
       const where = [];
       const params = [];
+      if (!filters.includeDeleted) {
+        where.push("c.is_deleted = 0");
+      }
       if (filters.templateId) {
         where.push("c.template_id = ?");
         params.push(filters.templateId);
@@ -81,7 +110,7 @@ function createCasesRepo(db) {
         params.push(filters.to);
       }
       const sql = `
-        SELECT c.id, c.template_id, c.title, c.created_at, t.name AS template_name
+        SELECT c.id, c.case_no, c.template_id, c.title, c.status, c.created_at, c.updated_at, t.name AS template_name
         FROM cases c
         JOIN templates t ON t.id = c.template_id
         ${where.length ? `WHERE ${where.join(" AND ")}` : ""}
@@ -90,15 +119,26 @@ function createCasesRepo(db) {
       `;
       return db.prepare(sql).all(...params).map((r) => ({
         id: r.id,
+        caseNo: r.case_no,
         templateId: r.template_id,
         templateName: r.template_name,
         title: r.title,
+        status: r.status,
         createdAt: r.created_at,
+        updatedAt: r.updated_at,
       }));
     },
     create: (row) => {
       const tx = db.transaction(() => {
-        insertCaseStmt.run(row.id, row.templateId, row.title, row.createdAt);
+        insertCaseStmt.run(
+          row.id,
+          row.caseNo,
+          row.templateId,
+          row.title,
+          row.status,
+          row.createdAt,
+          row.updatedAt
+        );
         insertDataStmt.run(row.dataId, row.id, row.dataJson);
       });
       tx();
@@ -110,10 +150,13 @@ function createCasesRepo(db) {
       const values = dataRow ? parseJsonOrNull(dataRow.data_json) : {};
       return {
         id: c.id,
+        caseNo: c.case_no,
         templateId: c.template_id,
         templateName: c.template_name,
         title: c.title,
+        status: c.status,
         createdAt: c.created_at,
+        updatedAt: c.updated_at,
         values,
       };
     },
@@ -143,12 +186,12 @@ function createCasesRepo(db) {
       return {
         case: {
           id: c.id,
-          case_no: c.id,
+          case_no: c.case_no,
           title: c.title,
           template_id: c.template_id,
-          status: null,
+          status: c.status,
           created_at: c.created_at,
-          updated_at: c.created_at,
+          updated_at: c.updated_at,
         },
         template: {
           id: c.template_id,
@@ -160,6 +203,15 @@ function createCasesRepo(db) {
         data_json: dataRow ? parseJsonOrNull(dataRow.data_json) : {},
       };
     },
+    update: (row) => {
+      const tx = db.transaction(() => {
+        const info = updateCaseStmt.run(row.title, row.status, row.updatedAt, row.id);
+        upsertDataStmt.run(row.dataId, row.id, row.dataJson);
+        return info;
+      });
+      return tx();
+    },
+    softDelete: (id, deletedAt) => softDeleteStmt.run(deletedAt, deletedAt, id),
   };
 }
 

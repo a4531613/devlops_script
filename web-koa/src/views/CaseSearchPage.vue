@@ -2,7 +2,7 @@
 import { computed, onMounted, ref } from 'vue'
 import dayjs from 'dayjs'
 import { useRouter } from 'vue-router'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { api } from '../api/client'
 import DynamicForm from '../components/DynamicForm.vue'
 import { buildSchemaFromFields, mergeConfigWithFieldDefs } from '../lib/templateConfig'
@@ -35,6 +35,10 @@ const detailInvalidCodes = computed(() =>
   useFallback.value ? [] : detailMerged.value.invalidCodes
 )
 
+const roleCode = localStorage.getItem('roleCode') || 'admin'
+const canEdit = roleCode === 'admin' || roleCode === 'editor'
+const canDelete = roleCode === 'admin' || roleCode === 'editor'
+
 async function loadTemplates() {
   templates.value = (await api.get('/templates')).data
 }
@@ -59,6 +63,10 @@ function goDetailPage(row) {
   router.push(`/cases/${row.id}`)
 }
 
+function goEditPage(row) {
+  router.push(`/cases/${row.id}/edit`)
+}
+
 async function copyLink(row) {
   const url = `${window.location.origin}/cases/${row.id}`
   if (navigator?.clipboard?.writeText) {
@@ -67,6 +75,13 @@ async function copyLink(row) {
     return
   }
   ElMessage.warning('当前环境不支持剪贴板')
+}
+
+async function removeCase(row) {
+  await ElMessageBox.confirm('确认删除该案例？', '提示', { type: 'warning' })
+  await api.delete(`/cases/${row.id}`)
+  ElMessage.success('已删除')
+  await search()
 }
 
 async function openDetail(row) {
@@ -126,10 +141,12 @@ onMounted(async () => {
       <el-table-column prop="title" label="标题" min-width="240" />
       <el-table-column prop="templateName" label="模板" min-width="180" />
       <el-table-column prop="createdAt" label="创建时间" min-width="220" />
-      <el-table-column label="操作" width="220" align="center">
+      <el-table-column label="操作" width="320" align="center">
         <template #default="{ row }">
           <el-button link type="primary" @click="goDetailPage(row)">查看详情</el-button>
           <el-button link type="primary" @click="openDetail(row)">预览</el-button>
+          <el-button v-if="canEdit" link type="primary" @click="goEditPage(row)">编辑</el-button>
+          <el-button v-if="canDelete" link type="danger" @click="removeCase(row)">删除</el-button>
           <el-button link type="primary" @click="copyLink(row)">复制链接</el-button>
         </template>
       </el-table-column>

@@ -38,6 +38,11 @@ function migrate(db) {
   const legacyCaseData = hasColumn("case_data", "data_json");
   const hasTemplateFieldConfigs = hasColumn("template_field_configs", "template_id");
   const hasCaseValues = hasColumn("case_values", "case_id");
+  const hasCaseNo = hasColumn("cases", "case_no");
+  const hasCaseStatus = hasColumn("cases", "status");
+  const hasCaseUpdated = hasColumn("cases", "updated_at");
+  const hasCaseDeleted = hasColumn("cases", "is_deleted");
+  const hasCaseDeletedAt = hasColumn("cases", "deleted_at");
 
   if (
     legacyTemplateFields ||
@@ -58,6 +63,21 @@ function migrate(db) {
     db.exec("DROP TABLE IF EXISTS case_data;");
     db.pragma("foreign_keys = ON");
     db.exec(schemaSql);
+  }
+
+  if (!hasCaseNo) db.exec("ALTER TABLE cases ADD COLUMN case_no TEXT NOT NULL DEFAULT ''");
+  if (!hasCaseStatus) db.exec("ALTER TABLE cases ADD COLUMN status TEXT");
+  if (!hasCaseUpdated) db.exec("ALTER TABLE cases ADD COLUMN updated_at TEXT NOT NULL DEFAULT ''");
+  if (!hasCaseDeleted) db.exec("ALTER TABLE cases ADD COLUMN is_deleted INTEGER NOT NULL DEFAULT 0");
+  if (!hasCaseDeletedAt) db.exec("ALTER TABLE cases ADD COLUMN deleted_at TEXT");
+
+  if (!hasCaseNo || !hasCaseUpdated) {
+    const rows = db.prepare("SELECT id, created_at FROM cases").all();
+    const updateStmt = db.prepare("UPDATE cases SET case_no = ?, updated_at = ? WHERE id = ?");
+    const tx = db.transaction(() => {
+      rows.forEach((r) => updateStmt.run(r.id, r.created_at, r.id));
+    });
+    tx();
   }
 }
 
