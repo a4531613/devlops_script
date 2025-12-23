@@ -1,7 +1,7 @@
 const { randomUUID } = require("node:crypto");
 const { nowIso } = require("../utils/time");
 const { jsonStringifyOrNull, parseJsonOrNull } = require("../utils/json");
-const { HttpError } = require("../utils/errors");
+const { badRequest, notFound } = require("../utils/errors");
 const { validateTemplateConfigJson } = require("../utils/templateConfig");
 
 function createTemplatesService(templatesRepo, templateFieldsRepo, configsRepo) {
@@ -13,17 +13,17 @@ function createTemplatesService(templatesRepo, templateFieldsRepo, configsRepo) 
       try {
         templatesRepo.insert({ id, name, description, createdAt });
       } catch (err) {
-        throw new HttpError(400, err.message);
+        throw badRequest(err.message);
       }
       return { id };
     },
     update: ({ id, name, description }) => {
       const info = templatesRepo.update({ id, name, description });
-      if (info.changes === 0) throw new HttpError(404, "not found");
+      if (info.changes === 0) throw notFound();
     },
     remove: (id) => {
       const info = templatesRepo.remove(id);
-      if (info.changes === 0) throw new HttpError(404, "not found");
+      if (info.changes === 0) throw notFound();
     },
     listFields: (templateId) => templateFieldsRepo.list(templateId),
     createField: (input) => {
@@ -49,7 +49,7 @@ function createTemplatesService(templatesRepo, templateFieldsRepo, configsRepo) 
           updatedAt: ts,
         });
       } catch (err) {
-        throw new HttpError(400, err.message);
+        throw badRequest(err.message);
       }
       return { id };
     },
@@ -72,11 +72,11 @@ function createTemplatesService(templatesRepo, templateFieldsRepo, configsRepo) 
         status: input.status ?? "active",
         updatedAt: ts,
       });
-      if (info.changes === 0) throw new HttpError(404, "not found");
+      if (info.changes === 0) throw notFound();
     },
     removeField: ({ templateId, fieldId }) => {
       const info = templateFieldsRepo.remove(fieldId, templateId);
-      if (info.changes === 0) throw new HttpError(404, "not found");
+      if (info.changes === 0) throw notFound();
     },
     getConfigJson: (templateId) => {
       const raw = configsRepo.get(templateId);
@@ -90,7 +90,7 @@ function createTemplatesService(templatesRepo, templateFieldsRepo, configsRepo) 
       try {
         configsRepo.save(templateId, jsonStringifyOrNull(normalized) || "{}", ts);
       } catch (err) {
-        throw new HttpError(400, err.message);
+        throw badRequest(err.message);
       }
     },
   };

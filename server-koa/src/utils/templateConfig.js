@@ -1,14 +1,14 @@
-const { HttpError } = require("./errors");
+const { badRequest } = require("./errors");
 
 function validateTemplateConfigJson(config, fieldCodes) {
   if (!config || typeof config !== "object" || Array.isArray(config)) {
-    throw new HttpError(400, "template_config_json must be object");
+    throw badRequest("template_config_json must be object");
   }
   if (config.version !== 1) {
-    throw new HttpError(400, "template_config_json.version must be 1");
+    throw badRequest("template_config_json.version must be 1");
   }
   if (!Array.isArray(config.layout)) {
-    throw new HttpError(400, "template_config_json.layout must be array");
+    throw badRequest("template_config_json.layout must be array");
   }
 
   const layout = [];
@@ -16,24 +16,24 @@ function validateTemplateConfigJson(config, fieldCodes) {
   const missing = new Set();
   config.layout.forEach((item, index) => {
     if (!item || typeof item !== "object" || Array.isArray(item)) {
-      throw new HttpError(400, `layout[${index}] must be object`);
+      throw badRequest(`layout[${index}] must be object`);
     }
     const fieldCode = item.fieldCode;
     if (!fieldCode || typeof fieldCode !== "string") {
-      throw new HttpError(400, `layout[${index}].fieldCode required`);
+      throw badRequest(`layout[${index}].fieldCode required`);
     }
     if (!fieldCodes.has(fieldCode)) {
       missing.add(fieldCode);
       return;
     }
     if (seen.has(fieldCode)) {
-      throw new HttpError(400, `layout[${index}].fieldCode duplicated`);
+      throw badRequest(`layout[${index}].fieldCode duplicated`);
     }
     seen.add(fieldCode);
 
     const span = Number.isInteger(item.span) ? item.span : null;
     if (span == null || span < 1 || span > 24) {
-      throw new HttpError(400, `layout[${index}].span must be 1-24`);
+      throw badRequest(`layout[${index}].span must be 1-24`);
     }
 
     layout.push({
@@ -47,7 +47,7 @@ function validateTemplateConfigJson(config, fieldCodes) {
   });
 
   if (missing.size) {
-    throw new HttpError(400, `fieldCode not found: ${Array.from(missing).join(",")}`);
+    throw badRequest(`fieldCode not found: ${Array.from(missing).join(",")}`);
   }
 
   return { version: 1, layout };

@@ -1,4 +1,4 @@
-const { HttpError } = require("../utils/errors");
+const { unauthorized, forbidden } = require("../utils/errors");
 
 const ROLE_PERMS = {
   admin: ["read", "write"],
@@ -19,8 +19,8 @@ function auth() {
     if (!ctx.path.startsWith("/api")) return next();
 
     const roleCode = ctx.get("x-role-code");
-    if (!roleCode) throw new HttpError(401, "x-role-code required");
-    if (!canAccess(roleCode, ctx.method)) throw new HttpError(403, "forbidden");
+    if (!roleCode) throw unauthorized("x-role-code required");
+    if (!canAccess(roleCode, ctx.method)) throw forbidden("forbidden");
 
     ctx.state.roleCode = roleCode;
     return next();
@@ -28,4 +28,3 @@ function auth() {
 }
 
 module.exports = { auth };
-

@@ -1,4 +1,5 @@
 const { requireString, optionalString } = require("../utils/validators");
+const { buildTemplateFieldInput } = require("./dto/templateFieldInput");
 
 function createTemplatesController(service) {
   return {
@@ -27,66 +28,12 @@ function createTemplatesController(service) {
       ctx.body = service.listFields(templateId);
     },
     createField: async (ctx) => {
-      const templateId = ctx.params.id;
-      const fieldCode = requireString(ctx.request.body?.fieldCode, "fieldCode");
-      const fieldName = requireString(ctx.request.body?.fieldName, "fieldName");
-      const fieldType = requireString(ctx.request.body?.fieldType, "fieldType");
-      const required = !!ctx.request.body?.required;
-      const options = ctx.request.body?.options ?? null;
-      const defaultValue = ctx.request.body?.defaultValue ?? null;
-      const placeholder = ctx.request.body?.placeholder ?? null;
-      const helpText = ctx.request.body?.helpText ?? null;
-      const regex = ctx.request.body?.regex ?? null;
-      const min = ctx.request.body?.min ?? null;
-      const max = ctx.request.body?.max ?? null;
-      const status = ctx.request.body?.status ?? "active";
-      ctx.body = service.createField({
-        templateId,
-        fieldCode,
-        fieldName,
-        fieldType,
-        required,
-        options,
-        defaultValue,
-        placeholder,
-        helpText,
-        regex,
-        min,
-        max,
-        status,
-      });
+      const input = buildTemplateFieldInput(ctx);
+      ctx.body = service.createField(input);
     },
     updateField: async (ctx) => {
-      const templateId = ctx.params.id;
-      const fieldId = ctx.params.fieldId;
-      const fieldCode = requireString(ctx.request.body?.fieldCode, "fieldCode");
-      const fieldName = requireString(ctx.request.body?.fieldName, "fieldName");
-      const fieldType = requireString(ctx.request.body?.fieldType, "fieldType");
-      const required = !!ctx.request.body?.required;
-      const options = ctx.request.body?.options ?? null;
-      const defaultValue = ctx.request.body?.defaultValue ?? null;
-      const placeholder = ctx.request.body?.placeholder ?? null;
-      const helpText = ctx.request.body?.helpText ?? null;
-      const regex = ctx.request.body?.regex ?? null;
-      const min = ctx.request.body?.min ?? null;
-      const max = ctx.request.body?.max ?? null;
-      const status = ctx.request.body?.status ?? "active";
-      service.updateField({
-        templateId,
-        fieldId,
-        fieldCode,
-        fieldName,
-        fieldType,
-        required,
-        options,
-        defaultValue,
-        placeholder,
-        helpText,
-        regex,
-        min,
-        max,
-        status,
-      });
+      const input = buildTemplateFieldInput(ctx);
+      service.updateField(input);
       ctx.body = { ok: true };
     },
     removeField: async (ctx) => {

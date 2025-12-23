@@ -1,16 +1,46 @@
 const { randomUUID } = require("node:crypto");
 const { nowIso } = require("../utils/time");
 const { jsonStringifyOrNull, parseJsonOrNull } = require("../utils/json");
-const { HttpError } = require("../utils/errors");
+const { badRequest, forbidden, notFound } = require("../utils/errors");
 const { validateCaseData } = require("../utils/caseDataValidator");
 
+function ensureEditable(roleCode) {
+  if (roleCode !== "admin" && roleCode !== "editor") {
+    throw forbidden();
+  }
+}
+
+function loadCaseOrThrow(casesRepo, id) {
+  const current = casesRepo.getById(id);
+  if (!current) throw notFound();
+  return current;
+}
+
+function validateCasePayload(templateFieldsRepo, configsRepo, templateId, dataJson) {
+  const fields = templateFieldsRepo.list(templateId);
+  const configRaw = configsRepo.get(templateId);
+  const config = configRaw ? parseJsonOrNull(configRaw) : null;
+  validateCaseData(fields, config, dataJson);
+}
+
+function buildUpdatePayload({ id, title, status, dataJson }) {
+  const updatedAt = nowIso();
+  return {
+    id,
+    title,
+    status,
+    updatedAt,
+    dataId: randomUUID(),
+    dataJson: jsonStringifyOrNull(dataJson) || "{}",
+  };
+}
+
 function createCasesService(casesRepo, templateFieldsRepo, configsRepo) {
-  const canEdit = (roleCode) => roleCode === "admin" || roleCode === "editor";
   return {
     list: (filters) => casesRepo.list(filters),
     create: ({ templateId, title, values }) => {
-      if (!templateId) throw new HttpError(400, "templateId required");
-      if (!title) throw new HttpError(400, "title required");
+      if (!templateId) throw badRequest("templateId required");
+      if (!title) throw badRequest("title required");
       const id = randomUUID();
       const createdAt = nowIso();
       const dataId = randomUUID();
@@ -30,48 +60,33 @@ function createCasesService(casesRepo, templateFieldsRepo, configsRepo) {
           dataJson,
         });
       } catch (err) {
-        throw new HttpError(400, err.message);
+        throw badRequest(err.message);
       }
       return { id, createdAt };
     },
     getById: (id) => {
       const c = casesRepo.getById(id);
-      if (!c) throw new HttpError(404, "not found");
+      if (!c) throw notFound();
       return c;
     },
     getDetail: (id) => {
       const c = casesRepo.getDetail(id);
-      if (!c) throw new HttpError(404, "not found");
+      if (!c) throw notFound();
       return c;
     },
     update: ({ id, title, status, dataJson, roleCode }) => {
-      if (!canEdit(roleCode)) throw new HttpError(403, "forbidden");
-      const current = casesRepo.getById(id);
-      if (!current) throw new HttpError(404, "not found");
-      const templateId = current.templateId;
-
-      const fields = templateFieldsRepo.list(templateId);
-      const configRaw = configsRepo.get(templateId);
-      const config = configRaw ? parseJsonOrNull(configRaw) : null;
-      validateCaseData(fields, config, dataJson);
-
-      const updatedAt = nowIso();
-      const payload = {
-        id,
-        title,
-        status,
-        updatedAt,
-        dataId: randomUUID(),
-        dataJson: jsonStringifyOrNull(dataJson) || "{}",
-      };
+      ensureEditable(roleCode);
+      const current = loadCaseOrThrow(casesRepo, id);
+      validateCasePayload(templateFieldsRepo, configsRepo, current.templateId, dataJson);
+      const payload = buildUpdatePayload({ id, title, status, dataJson });
       const info = casesRepo.update(payload);
-      if (!info || info.changes === 0) throw new HttpError(404, "not found");
-      return { id, title, status, updatedAt };
+      if (!info || info.changes === 0) throw notFound();
+      return { id, title, status, updatedAt: payload.updatedAt };
     },
     remove: ({ id, roleCode }) => {
-      if (!canEdit(roleCode)) throw new HttpError(403, "forbidden");
+      ensureEditable(roleCode);
       const info = casesRepo.softDelete(id, nowIso());
-      if (!info || info.changes === 0) throw new HttpError(404, "not found");
+      if (!info || info.changes === 0) throw notFound();
       return true;
     },
   };
