@@ -82,10 +82,10 @@ onMounted(loadTemplates)
   <el-card>
     <el-form label-width="90px">
       <el-form-item label="模板" required>
-        <el-select v-model="templateId" placeholder="请选择模板" style="width: 360px" @change="loadConfig">
+        <el-select v-model="templateId" placeholder="请选择模板" class="w-360" @change="loadConfig">
           <el-option v-for="t in templates" :key="t.id" :label="t.name" :value="t.id" />
         </el-select>
-        <span class="muted" style="margin-left: 10px">模板配置后才会渲染字段</span>
+        <span class="muted ml-10">模板配置后才会渲染字段</span>
       </el-form-item>
 
       <el-form-item label="标题" required>
@@ -95,7 +95,7 @@ onMounted(loadTemplates)
 
     <DynamicForm ref="formRef" v-model="form.values" :fields="schema" />
 
-    <div style="display: flex; justify-content: flex-end">
+    <div class="flex justify-end">
       <el-button type="primary" :loading="saving" @click="submit">提交</el-button>
     </div>
   </el-card>

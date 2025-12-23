@@ -19,9 +19,9 @@ function nav(path) {
       <div class="sidebar-title">案例管理</div>
       <el-menu
         :default-active="active"
-        background-color="#111827"
-        text-color="#d1d5db"
-        active-text-color="#fff"
+        background-color="var(--color-sidebar)"
+        text-color="var(--color-sidebar-muted)"
+        active-text-color="var(--color-sidebar-text)"
         @select="nav"
       >
         <el-menu-item index="/">
@@ -51,7 +51,7 @@ function nav(path) {
       <el-header class="page-header">
         <div class="page-title">{{ route.meta?.title || route.name }}</div>
       </el-header>
-      <el-main style="padding: 16px">
+      <el-main class="page-pad">
         <router-view />
       </el-main>
     </el-container>

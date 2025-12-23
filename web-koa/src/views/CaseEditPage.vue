@@ -93,19 +93,19 @@ onMounted(load)
       </el-empty>
 
       <template v-else>
-        <el-descriptions v-if="detail" :column="2" border style="margin-bottom: 12px">
+        <el-descriptions v-if="detail" :column="2" border class="mb-12">
           <el-descriptions-item label="案例编号">{{ detail.case_no || detail.id }}</el-descriptions-item>
           <el-descriptions-item label="模板名称">{{ template?.name || '-' }}</el-descriptions-item>
           <el-descriptions-item label="创建时间">{{ detail.created_at || '-' }}</el-descriptions-item>
           <el-descriptions-item label="更新时间">{{ detail.updated_at || '-' }}</el-descriptions-item>
         </el-descriptions>
 
-        <el-form label-width="90px" style="margin-bottom: 12px">
+        <el-form label-width="90px" class="mb-12">
           <el-form-item label="标题" required>
             <el-input v-model="form.title" />
           </el-form-item>
           <el-form-item label="状态">
-            <el-select v-model="form.status" style="width: 200px">
+            <el-select v-model="form.status" class="w-200">
               <el-option label="草稿" value="DRAFT" />
               <el-option label="已提交" value="SUBMITTED" />
             </el-select>
@@ -118,7 +118,7 @@ onMounted(load)
           show-icon
           :closable="false"
           title="该模板未配置布局，已按默认顺序展示"
-          style="margin-bottom: 12px"
+          class="mb-12"
         />
 
         <el-alert
@@ -127,7 +127,7 @@ onMounted(load)
           show-icon
           :closable="false"
           :title="`配置引用不存在字段：${invalidCodes.join('、')}`"
-          style="margin-bottom: 12px"
+          class="mb-12"
         />
 
         <el-empty v-if="!fields.length" description="未找到字段定义" />

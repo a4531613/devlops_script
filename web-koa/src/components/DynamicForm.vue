@@ -309,7 +309,7 @@ defineExpose({ validate, submit })
             :model-value="formModel[field.id]"
             :placeholder="placeholderOf(field)"
             :disabled="readonlyMode || field.config?.readonly"
-            style="width: 100%"
+            class="w-100"
             @update:model-value="(v) => update(field.id, v)"
           >
             <template v-if="getRenderer(field).optionComponent">

@@ -292,7 +292,7 @@ watch(
       type="warning"
       show-icon
       :closable="false"
-      style="margin: 12px 0"
+      class="my-12"
       title="字段池为空，请先维护字段列表"
     />
 
@@ -301,7 +301,7 @@ watch(
         <el-card>
           <div class="toolbar">
             <div class="card-title">字段池（只读）</div>
-            <el-input v-model="q" placeholder="搜索字段" style="width: 220px" clearable />
+            <el-input v-model="q" placeholder="搜索字段" class="w-220" clearable />
           </div>
 
           <Draggable
@@ -312,8 +312,8 @@ watch(
             :clone="cloneField"
           >
             <template #item="{ element }">
-              <div class="drag-card" style="margin-bottom: 8px; cursor: grab">
-                <div style="font-weight: 600">{{ element?.fieldName || element?.fieldCode || '字段' }}</div>
+              <div class="drag-card mb-8 cursor-grab">
+                <div class="text-semibold">{{ element?.fieldName || element?.fieldCode || '字段' }}</div>
                 <div class="muted">{{ element?.fieldCode || '-' }} · {{ element?.fieldType || '-' }}</div>
               </div>
             </template>
@@ -323,7 +323,7 @@ watch(
 
       <el-col :span="15">
         <el-card>
-          <div class="card-title" style="margin-bottom: 10px">表单布局区（拖拽排序）</div>
+          <div class="card-title mb-10">表单布局区（拖拽排序）</div>
 
           <Draggable
             v-model="selected"
@@ -335,37 +335,37 @@ watch(
           >
             <template #item="{ element, index }">
               <div class="drag-card" :style="itemStyle(element.ui.span)">
-                <div style="display: flex; justify-content: space-between; align-items: center; gap: 10px">
-                  <div style="display: flex; align-items: center; gap: 8px">
-                    <div class="drag-handle" style="cursor: move; color: #6b7280">☰</div>
-                    <div style="font-weight: 600">{{ element.fieldDef?.fieldName || '字段' }}</div>
+                <div class="flex items-center justify-between gap-10">
+                  <div class="flex items-center gap-8">
+                    <div class="drag-handle cursor-move muted">☰</div>
+                    <div class="text-semibold">{{ element.fieldDef?.fieldName || '字段' }}</div>
                   </div>
                   <el-button link type="danger" @click="removeAt(index)">移除</el-button>
                 </div>
 
-                <el-divider style="margin: 10px 0" />
+                <el-divider class="my-10" />
                 <el-row :gutter="10">
                   <el-col :span="12">
-                    <div class="muted" style="margin-bottom: 6px">Label</div>
+                    <div class="muted mb-6">Label</div>
                     <el-input v-model="element.ui.label" placeholder="字段显示名" />
                   </el-col>
                   <el-col :span="12">
-                    <div class="muted" style="margin-bottom: 6px">Placeholder</div>
+                    <div class="muted mb-6">Placeholder</div>
                     <el-input v-model="element.ui.placeholder" placeholder="输入提示" />
                   </el-col>
                 </el-row>
 
-                <el-row :gutter="10" style="margin-top: 8px">
+                <el-row :gutter="10" class="mt-8">
                   <el-col :span="8">
-                    <div class="muted" style="margin-bottom: 6px">Span</div>
-                    <el-input-number v-model="element.ui.span" :min="1" :max="24" style="width: 100%" />
+                    <div class="muted mb-6">Span</div>
+                    <el-input-number v-model="element.ui.span" :min="1" :max="24" class="w-100" />
                   </el-col>
                   <el-col :span="8">
-                    <div class="muted" style="margin-bottom: 6px">显示</div>
+                    <div class="muted mb-6">显示</div>
                     <el-switch v-model="element.ui.visible" />
                   </el-col>
                   <el-col :span="8">
-                    <div class="muted" style="margin-bottom: 6px">只读</div>
+                    <div class="muted mb-6">只读</div>
                     <el-switch v-model="element.ui.readonly" />
                   </el-col>
                 </el-row>
@@ -376,24 +376,24 @@ watch(
           <div v-if="!selected.length" class="muted">从左侧拖入字段，按顺序设计表单布局。</div>
         </el-card>
 
-        <el-card style="margin-top: 12px">
-          <div class="card-title" style="margin-bottom: 8px">template_config_json</div>
+        <el-card class="mt-12">
+          <div class="card-title mb-8">template_config_json</div>
           <el-input type="textarea" :rows="10" :model-value="templateConfigJson" readonly />
         </el-card>
       </el-col>
     </el-row>
 
     <el-drawer v-model="previewOpen" size="680px" title="预览表单">
-      <div v-if="previewInvalid.length" style="margin-bottom: 12px">
+      <div v-if="previewInvalid.length" class="mb-12">
         <el-alert type="error" :closable="false" show-icon>
           <template #title>发现无效字段：{{ previewInvalid.join('、') }}</template>
         </el-alert>
-        <div style="margin-top: 8px">
+        <div class="mt-8">
           <el-button type="danger" @click="cleanInvalidFields">清理无效字段</el-button>
         </div>
       </div>
 
-      <div class="toolbar" style="margin-bottom: 8px">
+      <div class="toolbar mb-8">
         <div class="toolbar-left">
           <el-switch v-model="previewReadonly" active-text="只读预览" />
           <el-switch
@@ -421,8 +421,8 @@ watch(
         <el-empty description="未选择任何字段或字段定义缺失" />
       </template>
 
-      <el-card v-if="previewOutput" style="margin-top: 12px">
-        <div class="card-title" style="margin-bottom: 8px">预览输出 JSON</div>
+      <el-card v-if="previewOutput" class="mt-12">
+        <div class="card-title mb-8">预览输出 JSON</div>
         <el-input type="textarea" :rows="8" :model-value="previewOutput" readonly />
       </el-card>
     </el-drawer>

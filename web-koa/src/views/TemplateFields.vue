@@ -182,8 +182,8 @@ onMounted(load)
     <el-card>
       <div class="toolbar">
         <div class="toolbar-left">
-          <el-input v-model="q" placeholder="搜索 fieldCode/fieldName" style="width: 240px" clearable />
-          <el-select v-model="typeFilter" placeholder="类型" style="width: 180px" clearable>
+          <el-input v-model="q" placeholder="搜索 fieldCode/fieldName" class="w-240" clearable />
+          <el-select v-model="typeFilter" placeholder="类型" class="w-180" clearable>
             <el-option v-for="t in fieldTypes" :key="t.value" :label="t.label" :value="t.value" />
           </el-select>
         </div>
@@ -216,7 +216,7 @@ onMounted(load)
         <el-input v-model="form.fieldName" placeholder="如：客户名称" />
       </el-form-item>
       <el-form-item label="字段类型" required>
-        <el-select v-model="form.fieldType" style="width: 220px">
+        <el-select v-model="form.fieldType" class="w-220">
           <el-option v-for="t in fieldTypes" :key="t.value" :label="t.label" :value="t.value" />
         </el-select>
       </el-form-item>
@@ -236,13 +236,13 @@ onMounted(load)
         <el-input v-model="form.regex" placeholder="如：^1[3-9]\\d{9}$" />
       </el-form-item>
       <el-form-item label="最小值">
-        <el-input-number v-model="form.min" style="width: 100%" />
+        <el-input-number v-model="form.min" class="w-100" />
       </el-form-item>
       <el-form-item label="最大值">
-        <el-input-number v-model="form.max" style="width: 100%" />
+        <el-input-number v-model="form.max" class="w-100" />
       </el-form-item>
       <el-form-item label="状态">
-        <el-select v-model="form.status" style="width: 160px">
+        <el-select v-model="form.status" class="w-160">
           <el-option label="active" value="active" />
           <el-option label="inactive" value="inactive" />
         </el-select>
@@ -252,7 +252,7 @@ onMounted(load)
       </el-form-item>
       <el-form-item label="折叠配置" v-if="form.fieldType === 'collapse'">
         <el-switch v-model="form.collapseConfig.accordion" active-text="手风琴" />
-        <el-switch v-model="form.collapseConfig.defaultOpen" active-text="默认展开" style="margin-left: 12px" />
+        <el-switch v-model="form.collapseConfig.defaultOpen" active-text="默认展开" class="ml-12" />
       </el-form-item>
       <el-form-item label="表格列" v-if="form.fieldType === 'table'">
         <TableColumnsEditor v-model="form.tableConfig" />
@@ -264,4 +264,3 @@ onMounted(load)
     </template>
   </el-dialog>
 </template>
-

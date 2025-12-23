@@ -42,9 +42,8 @@ function removeRow(index) {
         </template>
       </el-table-column>
     </el-table>
-    <div style="margin-top: 8px">
+    <div class="mt-8">
       <el-button @click="addRow">新增选项</el-button>
     </div>
   </div>
 </template>
-

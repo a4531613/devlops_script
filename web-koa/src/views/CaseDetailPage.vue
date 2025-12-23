@@ -113,7 +113,7 @@ onMounted(load)
       </el-empty>
 
       <template v-else>
-        <el-descriptions v-if="detail" :column="2" border style="margin-bottom: 12px">
+        <el-descriptions v-if="detail" :column="2" border class="mb-12">
           <el-descriptions-item label="案例编号">{{ caseNo }}</el-descriptions-item>
           <el-descriptions-item label="标题">{{ detail.title }}</el-descriptions-item>
           <el-descriptions-item label="模板名称">{{ template?.name || '-' }}</el-descriptions-item>
@@ -128,7 +128,7 @@ onMounted(load)
           show-icon
           :closable="false"
           title="该模板未配置布局，已按默认顺序展示"
-          style="margin-bottom: 12px"
+          class="mb-12"
         />
 
         <el-alert
@@ -137,7 +137,7 @@ onMounted(load)
           show-icon
           :closable="false"
           :title="`配置引用不存在字段：${invalidCodes.join('、')}`"
-          style="margin-bottom: 12px"
+          class="mb-12"
         />
 
         <el-empty v-if="!fields.length" description="未找到字段定义" />

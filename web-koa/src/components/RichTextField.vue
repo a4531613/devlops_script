@@ -31,11 +31,10 @@ const safeHtml = computed(() => {
 
 <style scoped>
 .richtext-preview {
-  padding: 8px;
-  border: 1px solid #e5e7eb;
-  border-radius: 6px;
-  background: #fff;
+  padding: var(--space-8);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
   min-height: 80px;
 }
 </style>
-

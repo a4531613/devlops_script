@@ -58,7 +58,7 @@ function inputComponent(type) {
             <component
               :is="inputComponent(col.type)"
               v-if="col.type !== 'select' && col.type !== 'date'"
-              style="width: 100%"
+              class="w-100"
               :model-value="row[col.code]"
               @update:model-value="(v) => updateRow($index, col.code, v)"
             />
@@ -66,13 +66,13 @@ function inputComponent(type) {
               v-else-if="col.type === 'date'"
               type="date"
               value-format="YYYY-MM-DD"
-              style="width: 100%"
+              class="w-100"
               :model-value="row[col.code]"
               @update:model-value="(v) => updateRow($index, col.code, v)"
             />
             <el-select
               v-else
-              style="width: 100%"
+              class="w-100"
               :model-value="row[col.code]"
               @update:model-value="(v) => updateRow($index, col.code, v)"
             >
@@ -92,10 +92,9 @@ function inputComponent(type) {
         </template>
       </el-table-column>
     </el-table>
-    <div style="margin-top: 8px">
+    <div class="mt-8">
       <el-button v-if="!readonly" @click="addRow">新增行</el-button>
-      <span class="muted" style="margin-left: 8px">行数：{{ rows.length }}</span>
+      <span class="muted ml-8">行数：{{ rows.length }}</span>
     </div>
   </div>
 </template>
-

@@ -64,7 +64,7 @@ function removeColumn(index) {
       </el-table-column>
       <el-table-column label="类型" width="120">
         <template #default="{ row }">
-          <el-select v-model="row.type" style="width: 120px" @change="update">
+          <el-select v-model="row.type" class="w-120" @change="update">
             <el-option value="input" label="输入框" />
             <el-option value="number" label="数字" />
             <el-option value="select" label="下拉" />
@@ -90,7 +90,7 @@ function removeColumn(index) {
       </el-table-column>
     </el-table>
 
-    <div style="margin-top: 8px; display: flex; gap: 12px">
+    <div class="mt-8 flex items-center gap-12">
       <el-button @click="addColumn">新增列</el-button>
       <div class="muted">最小行</div>
       <el-input-number v-model="local.minRows" @change="update" />

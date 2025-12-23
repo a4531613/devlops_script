@@ -111,15 +111,15 @@ onMounted(async () => {
 </script>
 
 <template>
-  <el-card style="margin-bottom: 12px">
+  <el-card class="mb-12">
     <el-form inline>
       <el-form-item label="模板">
-        <el-select v-model="templateId" placeholder="全部" style="width: 220px" clearable>
+        <el-select v-model="templateId" placeholder="全部" class="w-220" clearable>
           <el-option v-for="t in templates" :key="t.id" :label="t.name" :value="t.id" />
         </el-select>
       </el-form-item>
       <el-form-item label="关键词">
-        <el-input v-model="keyword" placeholder="标题包含" clearable style="width: 220px" />
+        <el-input v-model="keyword" placeholder="标题包含" clearable class="w-220" />
       </el-form-item>
       <el-form-item label="时间">
         <el-date-picker
@@ -151,7 +151,7 @@ onMounted(async () => {
         </template>
       </el-table-column>
     </el-table>
-    <div class="muted" style="margin-top: 8px">提示：双击行也可预览详情。</div>
+    <div class="muted mt-8">提示：双击行也可预览详情。</div>
   </el-card>
 
   <el-drawer v-model="drawerOpen" size="520px" title="案例详情">
@@ -166,7 +166,7 @@ onMounted(async () => {
           <el-descriptions-item label="创建时间">{{ detailCase.created_at }}</el-descriptions-item>
         </el-descriptions>
 
-        <div class="toolbar" style="margin: 12px 0 6px">
+        <div class="toolbar mt-12 mb-6">
           <div class="card-title">字段值</div>
           <el-button link type="primary" @click="goDetailPage(detailCase)">打开独立页面</el-button>
         </div>
@@ -177,7 +177,7 @@ onMounted(async () => {
           show-icon
           :closable="false"
           title="该模板未配置布局，已按默认顺序展示"
-          style="margin-bottom: 12px"
+          class="mb-12"
         />
 
         <el-alert
@@ -186,7 +186,7 @@ onMounted(async () => {
           show-icon
           :closable="false"
           :title="`配置引用不存在字段：${detailInvalidCodes.join('、')}`"
-          style="margin-bottom: 12px"
+          class="mb-12"
         />
 
         <DynamicForm :fields="detailSchema" v-model="detailValues" mode="readonly" />
