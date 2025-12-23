@@ -1,3 +1,5 @@
+const { withTransaction } = require("../db/sqlite");
+
 function createRolesRepo(db) {
   const listStmt = db.prepare(
     "SELECT id, name, description, created_at FROM roles ORDER BY created_at DESC"
@@ -8,13 +10,18 @@ function createRolesRepo(db) {
   const updateStmt = db.prepare("UPDATE roles SET name = ?, description = ? WHERE id = ?");
   const deleteStmt = db.prepare("DELETE FROM roles WHERE id = ?");
 
+  const insertTx = withTransaction(db, (row) =>
+    insertStmt.run(row.id, row.name, row.description, row.createdAt)
+  );
+  const updateTx = withTransaction(db, (row) => updateStmt.run(row.name, row.description, row.id));
+  const deleteTx = withTransaction(db, (id) => deleteStmt.run(id));
+
   return {
     list: () => listStmt.all(),
-    insert: (row) => insertStmt.run(row.id, row.name, row.description, row.createdAt),
-    update: (row) => updateStmt.run(row.name, row.description, row.id),
-    remove: (id) => deleteStmt.run(id),
+    insert: (row) => insertTx(row),
+    update: (row) => updateTx(row),
+    remove: (id) => deleteTx(id),
   };
 }
 
 module.exports = { createRolesRepo };
-

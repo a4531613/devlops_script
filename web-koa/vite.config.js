@@ -3,14 +3,18 @@ import vue from '@vitejs/plugin-vue'
 
 export default defineConfig({
   plugins: [vue()],
+  base: '/',
+  build: {
+    outDir: '../server-koa/public',
+    emptyOutDir: true,
+  },
   server: {
     port: 5173,
     proxy: {
       '/api': {
-        target: 'http://localhost:5175',
+        target: 'http://localhost:8080',
         changeOrigin: true,
       },
     },
   },
 })
-

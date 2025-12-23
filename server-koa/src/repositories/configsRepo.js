@@ -1,3 +1,5 @@
+const { withTransaction } = require("../db/sqlite");
+
 function createConfigsRepo(db) {
   const getStmt = db.prepare("SELECT config_json FROM template_config WHERE template_id = ?");
   const upsertStmt = db.prepare(
@@ -8,16 +10,19 @@ function createConfigsRepo(db) {
     `
   );
 
+  const upsertTx = withTransaction(db, (templateId, configJson, updatedAt) =>
+    upsertStmt.run(templateId, configJson, updatedAt)
+  );
+
   return {
     get: (templateId) => {
       const row = getStmt.get(templateId);
       return row ? row.config_json : null;
     },
     save: (templateId, configJson, updatedAt) => {
-      upsertStmt.run(templateId, configJson, updatedAt);
+      upsertTx(templateId, configJson, updatedAt);
     },
   };
 }
 
 module.exports = { createConfigsRepo };
-

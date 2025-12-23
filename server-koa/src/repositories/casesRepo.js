@@ -1,4 +1,5 @@
 const { parseJsonOrNull } = require("../utils/json");
+const { withTransaction } = require("../db/sqlite");
 
 function createCasesRepo(db) {
   const listStmt = db.prepare(
@@ -86,6 +87,25 @@ function createCasesRepo(db) {
     `
   );
 
+  const createTx = withTransaction(db, (row) => {
+    insertCaseStmt.run(
+      row.id,
+      row.caseNo,
+      row.templateId,
+      row.title,
+      row.status,
+      row.createdAt,
+      row.updatedAt
+    );
+    insertDataStmt.run(row.dataId, row.id, row.dataJson);
+  });
+  const updateTx = withTransaction(db, (row) => {
+    const info = updateCaseStmt.run(row.title, row.status, row.updatedAt, row.id);
+    upsertDataStmt.run(row.dataId, row.id, row.dataJson);
+    return info;
+  });
+  const deleteTx = withTransaction(db, (id, deletedAt) => softDeleteStmt.run(deletedAt, deletedAt, id));
+
   return {
     list: (filters) => {
       const where = [];
@@ -128,21 +148,7 @@ function createCasesRepo(db) {
         updatedAt: r.updated_at,
       }));
     },
-    create: (row) => {
-      const tx = db.transaction(() => {
-        insertCaseStmt.run(
-          row.id,
-          row.caseNo,
-          row.templateId,
-          row.title,
-          row.status,
-          row.createdAt,
-          row.updatedAt
-        );
-        insertDataStmt.run(row.dataId, row.id, row.dataJson);
-      });
-      tx();
-    },
+    create: (row) => createTx(row),
     getById: (id) => {
       const c = getCaseStmt.get(id);
       if (!c) return null;
@@ -203,15 +209,8 @@ function createCasesRepo(db) {
         data_json: dataRow ? parseJsonOrNull(dataRow.data_json) : {},
       };
     },
-    update: (row) => {
-      const tx = db.transaction(() => {
-        const info = updateCaseStmt.run(row.title, row.status, row.updatedAt, row.id);
-        upsertDataStmt.run(row.dataId, row.id, row.dataJson);
-        return info;
-      });
-      return tx();
-    },
-    softDelete: (id, deletedAt) => softDeleteStmt.run(deletedAt, deletedAt, id),
+    update: (row) => updateTx(row),
+    softDelete: (id, deletedAt) => deleteTx(id, deletedAt),
   };
 }
 
